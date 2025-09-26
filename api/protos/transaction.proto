@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package risk;
+
+option go_package = "api/protos";
+
+// // Struktur pesan transaksi
+// message Transaction {
+//   string rrn = 1; // Retrieval Reference Number
+//   string pan = 2; // Primary Account Number (masked)
+//   int64 amount = 3;
+//   string terminal_id = 4;
+//   string pos_entry_mode = 5;
+//   string transaction_time = 6; // HHMMSS
+//   string stan = 7; // System Trace Audit Number
+// }
+
+message Transaction{
+  string trxDate = 1;
+  string trxTime = 2;
+  string cardOrg = 3;
+  string cardType = 4;
+  string cardNumber = 5;
+  string merchOrg = 6;
+  string merchNumber = 7;
+  string trxCode = 8;
+  string trxReffNumber = 9;
+  float  trxAmount = 10;
+  float  trxBillAmount = 11;
+  string cardExpired = 12;
+  string merchCategory = 13;
+  string trxCountry = 14;
+  string trxAuthCode = 15;
+  string trxCardType = 16;
+  string trxRespCode = 17;
+  string trxMerchantName = 18;
+  string trxPinCap = 19;
+  string trxPosMode = 20;
+  string trxPosData = 21;
+  string trxStip = 22;
+  string trxCvvResult = 23;
+  string trxCvv2Result = 24;
+  string trxCavResult = 25;
+  string trxArqcResult = 26;
+  string trxCurrency = 27;
+  string trxInstallment = 28;
+  string trxDeclineReason = 29;
+  string trxTerminalId = 30;
+  string trxMerchantId = 31;
+  string trxAcqId = 32;
+  string trxFwdId = 33;
+  string trxChbCurr = 34;
+}
+
+// Struktur untuk hasil evaluasi risiko
+message RiskResult {
+  string rrn = 1;
+  enum RiskLevel {
+    LOW = 0;
+    MEDIUM = 1;
+    HIGH = 2;
+  }
+  RiskLevel risk_level = 2;
+  repeated string triggered_rules = 3;
+  int32 risk_score = 4;
+}
+
+// Service untuk Rule Engine
+service RuleEngine {
+  rpc AnalyzeTransaction(Transaction) returns (RiskResult);
+}
+
+// Service untuk Persistence
+service Persistence {
+  rpc StoreTransaction(RiskResult) returns (StoreAck);
+}
+
+message StoreAck {
+  bool success = 1;
+  string message = 2;
+}
