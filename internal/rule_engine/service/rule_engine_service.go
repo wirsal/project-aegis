@@ -1,18 +1,21 @@
 package service
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"sort"
 
 	pb "github.com/wirsal/project-aegis/api/protos"
 )
 
-// Rule mendefinisikan struktur sebuah aturan.
+// Struct Rule tetap sama
 type Rule struct {
+	Priority       int    `json:"priority"`
+	Status         int    `json:"status"`
 	RuleCode       string `json:"rule_code"`
+	RuleDesc       string `json:"rule_desc"`
 	RuleType       string `json:"rule_type"`
 	Org            string `json:"org"`
 	Type           string `json:"type"`
@@ -31,22 +34,27 @@ type Rule struct {
 	CardList       string `json:"card_list"`
 }
 
-type RuleEngineServer struct {
-	pb.UnimplementedRuleEngineServer
-	rules []Rule // Menyimpan semua aturan yang dimuat
+// Ganti nama struct menjadi 'Service' untuk merepresentasikan lapisan logika bisnis
+type Service struct {
+	rules []Rule
 }
 
-// NewRuleEngineServer sekarang memuat aturan saat inisialisasi.
-func NewRuleEngineServer(rulesPath string) (*RuleEngineServer, error) {
+// Ganti nama constructor menjadi 'NewService'
+func NewService(rulesPath string) (*Service, error) {
 	rules, err := loadRules(rulesPath)
 	if err != nil {
-		return nil, fmt.Errorf("gagal memuat aturan: %w", err)
+		return nil, fmt.Errorf("failed to load rules: %w", err)
 	}
-	log.Printf("Berhasil memuat %d aturan dari %s", len(rules), rulesPath)
-	return &RuleEngineServer{rules: rules}, nil
+
+	sort.Slice(rules, func(i, j int) bool {
+		return rules[i].Priority < rules[j].Priority
+	})
+
+	log.Printf("Successfully loaded and sorted %d rules from %s", len(rules), rulesPath)
+	return &Service{rules: rules}, nil
 }
 
-// loadRules membaca dan mem-parsing file JSON aturan.
+// fungsi loadRules tetap sama
 func loadRules(path string) ([]Rule, error) {
 	file, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -57,54 +65,44 @@ func loadRules(path string) ([]Rule, error) {
 	return rules, err
 }
 
-func (s *RuleEngineServer) AnalyzeTransaction(ctx context.Context, in *pb.Transaction) (*pb.RiskResult, error) {
-	log.Printf("Menerima transaksi untuk dianalisis: Reff=%s", in.TrxReffNumber)
+// AnalyzeTransaction sekarang menjadi fungsi bisnis murni.
+// Perhatikan bahwa 'context' sudah tidak ada, karena itu urusan handler.
+func (s *Service) AnalyzeTransaction(in *pb.Transaction) *pb.RiskResult {
+	log.Printf("Analyzing transaction (Reff=%s) against %d rules...", in.TrxReffNumber, len(s.rules))
 
-	// Iterasi melalui semua aturan yang telah dimuat
 	for _, rule := range s.rules {
-		// Panggil fungsi validasi utama
 		if s.validateRule(rule, in) {
-			log.Printf("✅ Transaksi cocok dengan Aturan: %s", rule.RuleCode)
+			log.Printf("✅ Transaction MATCHED rule with priority %d: %s %s", rule.Priority, rule.RuleCode, rule.RuleDesc)
 
 			// TODO: Panggil Persistence Service di sini jika diperlukan
 
-			// Jika cocok, buat hasil dan langsung kembalikan
 			return &pb.RiskResult{
 				Rrn:            in.TrxReffNumber,
-				RiskLevel:      pb.RiskResult_HIGH, // Atau tentukan dari tipe aturan
+				RiskLevel:      pb.RiskResult_HIGH,
 				TriggeredRules: []string{rule.RuleCode},
-				RiskScore:      100, // Atau tentukan dari aturan
-			}, nil
+				RiskScore:      100,
+			}
 		}
 	}
 
-	log.Printf("Transaksi tidak cocok dengan aturan manapun.")
-	// Jika tidak ada aturan yang cocok
+	log.Printf("Transaction did not match any rules.")
 	return &pb.RiskResult{
 		Rrn:            in.TrxReffNumber,
 		RiskLevel:      pb.RiskResult_LOW,
 		TriggeredRules: []string{},
 		RiskScore:      0,
-	}, nil
+	}
 }
 
-// validateRule adalah implementasi Go dari fungsi JS Anda.
-func (s *RuleEngineServer) validateRule(rule Rule, trx *pb.Transaction) bool {
-	// Konversi amount ke int64 untuk perbandingan
-	// amountInt := int64(trx.TrxAmount)
-	// Konversi trx time ke int64 (hhmmss)
-	// trxTimeInt, _ := strconv.ParseInt(trx.TrxTime, 10, 64)
+// validateRule tetap sama
+func (s *Service) validateRule(rule Rule, trx *pb.Transaction) bool {
+	amountInt := int64(trx.TrxAmount)
 
-	// Lakukan semua validasi, jika satu saja gagal, hasilnya akan false
-	// return vInList(rule.Org, trx.CardOrg, "000") &&
-	// 	vInList(rule.Type, trx.CardType, "000") &&
-	// 	vInList(rule.MerchCategory, trx.MerchCategory, "0000") &&
-	// 	vInList(rule.TransCode, trx.TrxCode, "000") &&
-	// 	vCountry(rule.CountryCode, trx.TrxCountry) &&
-	// 	vInRange(rule.Amount, amountInt) &&
-	// 	vInRange(rule.TimeStamp, trxTimeInt) &&
-	// 	vInList(rule.RespCode, trx.TrxRespCode, "AA")
-
-	return vInList(rule.CountryCode, trx.TrxCountry, "360")
-	// Tambahkan validasi lain di sini...
+	return vInList(rule.Org, trx.CardOrg, "000") &&
+		vInclusionExclusion(rule.CountryCode, trx.TrxCountry, "A000") &&
+		vInList(rule.Type, trx.CardType, "000") &&
+		vInList(rule.MerchCategory, trx.MerchCategory, "0000") &&
+		vInList(rule.PosCondCode, trx.TrxPosMode, "00") &&
+		vInList(rule.RespCode, trx.TrxRespCode, "00") &&
+		vInRange(rule.Amount, amountInt)
 }

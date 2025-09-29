@@ -4,17 +4,6 @@ package risk;
 
 option go_package = "api/protos";
 
-// // Struktur pesan transaksi
-// message Transaction {
-//   string rrn = 1; // Retrieval Reference Number
-//   string pan = 2; // Primary Account Number (masked)
-//   int64 amount = 3;
-//   string terminal_id = 4;
-//   string pos_entry_mode = 5;
-//   string transaction_time = 6; // HHMMSS
-//   string stan = 7; // System Trace Audit Number
-// }
-
 message Transaction{
   string trxDate = 1;
   string trxTime = 2;
@@ -26,7 +15,7 @@ message Transaction{
   string trxCode = 8;
   string trxReffNumber = 9;
   float  trxAmount = 10;
-  string  trxBillAmount = 11;
+  string trxBillAmount = 11;
   string cardExpired = 12;
   string merchCategory = 13;
   string trxCountry = 14;

@@ -6,50 +6,32 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	// Import paket handler dan service dari direktori internal
+	pb "github.com/wirsal/project-aegis/api/protos"
 	"github.com/wirsal/project-aegis/internal/gateway/handler"
 	"github.com/wirsal/project-aegis/internal/gateway/service"
-
-	// Ganti dengan path .proto Anda yang sudah di-generate
-	pb "github.com/wirsal/project-aegis/api/protos"
-)
-
-const (
-	tcpPort               = ":3333"
-	ruleEngineGRPCAddress = "localhost:50051" // Alamat gRPC Rule Engine Service
+	"github.com/wirsal/project-aegis/pkg/config" // <-- 1. Import paket config
 )
 
 func main() {
-	tcpHandler()
-	kafkaHandler()
-
-}
-
-func tcpHandler() {
-	// LANGKAH 1: Buat koneksi gRPC ke Rule Engine Service
-	conn, err := grpc.Dial(ruleEngineGRPCAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// 2. Muat konfigurasi dari file
+	cfg, err := config.LoadConfig("./configs")
 	if err != nil {
-		log.Fatalf("FATAL: Gagal terhubung ke gRPC server: %v", err)
+		log.Fatalf("FATAL: could not load config: %v", err)
+	}
+
+	// 3. Gunakan nilai dari config, bukan konstanta
+	conn, err := grpc.Dial(cfg.Gateway.RuleEngineAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("FATAL: Failed to connect to gRPC server: %v", err)
 	}
 	defer conn.Close()
 
-	// Buat gRPC client dari koneksi yang sudah ada
 	ruleEngineClient := pb.NewRuleEngineClient(conn)
-	log.Println("Berhasil terhubung ke Rule Engine Service.")
+	log.Println("Successfully connected to Rule Engine Service.")
 
-	// LANGKAH 2: Inisialisasi service layer (si Koki)
-	// Suntikkan (inject) gRPC client ke dalam service
 	gatewayService := service.NewGatewayService(ruleEngineClient)
-
-	// LANGKAH 3: Inisialisasi handler layer (si Pelayan)
-	// Suntikkan (inject) service ke dalam handler
 	tcpHandler := handler.NewTCPHandler(gatewayService)
 
-	// LANGKAH 4: Jalankan server
-	// Handler kini siap untuk menerima koneksi TCP dan meneruskannya ke service
-	tcpHandler.StartServer(tcpPort)
-}
-
-func kafkaHandler() {
-	// Implementasi Kafka handler di sini
+	// Gunakan port dari config
+	tcpHandler.StartServer(cfg.Gateway.TCPPort)
 }

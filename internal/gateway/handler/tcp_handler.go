@@ -41,9 +41,8 @@ func (h *TCPHandler) HandleConnection(conn net.Conn) {
 		}
 		length := int(binary.BigEndian.Uint16(header))
 
-		if length <= 0 {
-			log.Printf("Received header, expected message length: %d bytes", length)
-		} else {
+		// Proceed only if length > 0
+		if length > 0 {
 			// 2. Read the entire message body based on the length
 			rawBody := make([]byte, length)
 			if _, err := io.ReadFull(conn, rawBody); err != nil {

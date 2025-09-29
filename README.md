@@ -53,7 +53,7 @@ Installation & Running
 
 1. Clone the repository:
 ```bash
-git clone [https://github.com/your-username/project-aegis.git](https://github.com/your-username/project-aegis.git)
+git clone https://github.com/wirsal/project-aegis.git
 cd project-aegis
 ```
 
@@ -121,7 +121,7 @@ syntax = "proto3";
 
 package risk;
 
-option go_package = "[github.com/your-username/project-aegis/protos](https://github.com/your-username/project-aegis/protos)";
+option go_package = "[github.com/wirsal/project-aegis/protos](https://github.com/wirsal/project-aegis/protos)";
 
 // A financial transaction
 message Transaction {

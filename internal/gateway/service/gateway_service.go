@@ -6,62 +6,62 @@ import (
 	"math"
 	"strconv"
 
-	// Diperlukan untuk EBCDIC -> ASCII
+	// Required for EBCDIC -> ASCII
 	"google.golang.org/grpc"
 
 	pb "github.com/wirsal/project-aegis/api/protos"
 	"github.com/wirsal/project-aegis/pkg/codec"
 )
 
-// Definisi interface RuleEngineClient tetap sama
+// The RuleEngineClient interface definition remains the same
 type RuleEngineClient interface {
 	AnalyzeTransaction(ctx context.Context, in *pb.Transaction, opts ...grpc.CallOption) (*pb.RiskResult, error)
 }
 
-// Struct GatewayService tetap sama
+// The GatewayService struct remains the same
 type GatewayService struct {
 	ruleEngineClient RuleEngineClient
 }
 
-// Fungsi NewGatewayService tetap sama
+// The NewGatewayService function remains the same
 func NewGatewayService(client RuleEngineClient) *GatewayService {
 	return &GatewayService{
 		ruleEngineClient: client,
 	}
 }
 
-// ProcessAndForwardMessage sekarang berisi semua logika.
+// ProcessAndForwardMessage now contains all the logic.
 func (s *GatewayService) ProcessAndForwardMessage(ctx context.Context, rawMessage []byte) error {
-	log.Println("Memulai translasi dan parsing pesan kustom...")
+	log.Println("Starting translation and parsing of custom message...")
 
 	protoMsg, err := s.ParseAndMapTransaction(string(rawMessage))
 	if err != nil {
-		log.Printf("ERROR: Gagal mem-parsing atau memetakan transaksi: %v", err)
+		log.Printf("ERROR: Failed to parse or map the transaction: %v", err)
 		return err
 	}
 
-	log.Printf("✅ Pesan berhasil di-parsing. Mengirim transaksi (Reff: %s)...", protoMsg.TrxReffNumber)
+	log.Printf("✅ Message parsed successfully. Sending transaction (Reff: %s)...", protoMsg.TrxReffNumber)
 	riskResult, err := s.ruleEngineClient.AnalyzeTransaction(ctx, protoMsg)
 	if err != nil {
-		log.Printf("ERROR: Panggilan gRPC ke Rule Engine gagal: %v", err)
+		log.Printf("ERROR: gRPC call to Rule Engine failed: %v", err)
 		return err
 	}
 
-	log.Printf("✅ Respon dari Rule Engine diterima. Skor Risiko: %d, Level: %s", riskResult.RiskScore, riskResult.RiskLevel)
+	log.Printf("✅ Response from Rule Engine received. Risk Score: %d, Level: %s", riskResult.RiskScore, riskResult.RiskLevel)
 	return nil
 }
 
-// ReadTransaction diubah namanya menjadi ParseAndMapTransaction untuk kejelasan
+// ParseAndMapTransaction was renamed from ReadTransaction for clarity
 func (s *GatewayService) ParseAndMapTransaction(data string) (*pb.Transaction, error) {
-	log.Println("Mem-parsing dan memetakan data transaksi dari string ASCII...")
+	log.Println("Parsing and mapping transaction data from ASCII string...")
 
-	// Helper untuk parseFloat yang aman
+	// Helper for safe float parsing
 	parseFloat := func(s string) float32 {
 		val, _ := strconv.ParseFloat(s, 32)
 		return float32(val)
 	}
 
-	// Mapping langsung dari data parsing ke struct Protobuf
+	// Direct mapping from parsed data to the Protobuf struct
 	trx := &pb.Transaction{
 		TrxDate:          codec.Hex2string_comp3(data[0:4])[0:7],
 		TrxTime:          codec.Hex2string_comp3(data[4:8])[:7],
@@ -90,11 +90,10 @@ func (s *GatewayService) ParseAndMapTransaction(data string) (*pb.Transaction, e
 	decx, _ := strconv.Atoi(codec.Hex2string(data[84:85]))
 	tempConvRate := codec.Hex2string_comp3(data[85:92])
 	trx.TrxOrgAmount = trxOrgAmountSimple(trx.TrxBillAmount, trx.TrxCardType, trx.MerchOrg, tempConvRate, decx)
-	// Logika switch untuk field-field kondisional
+	// Switch logic for conditional fields
 	switch trx.TrxCardType {
 	case "1", "3":
 		//VISA
-
 		trx.TrxPosMode = codec.Hex2string(data[101:103])
 		trx.TrxPinCap = codec.Hex2string(data[103:104])
 		trx.TrxRespCode = codec.Hex2string(data[619:621])
@@ -122,7 +121,7 @@ func (s *GatewayService) ParseAndMapTransaction(data string) (*pb.Transaction, e
 	case "6", "7":
 	}
 
-	log.Printf("Data Transaksi yang Diparsing: %+v", trx)
+	log.Printf("Parsed Transaction Data: %+v", trx)
 	return trx, nil
 }
 
@@ -148,31 +147,32 @@ func declineReason(decCode string) string {
 		return strconv.Itoa(code)
 	}
 }
+
 func trxOrgAmountSimple(amountStr, trxCardType, merchOrg, tempConvRate string, decx int) float32 {
-	// 1. Parse amount dengan presisi 32-bit. Hasilnya tetap float64 untuk kalkulasi.
+	// 1. Parse the main amount with 32-bit precision. The result is still a float64 for calculations.
 	orgAmount, err := strconv.ParseFloat(amountStr, 32)
 	if err != nil {
-		return 0.0 // Tipe float32 akan diinferensikan secara otomatis
+		return 0.0 // The float32 type will be inferred automatically
 	}
 
-	// 2. Guard Clause tetap sama
+	// 2. Guard Clause remains the same
 	isDefaultRate := ((trxCardType == "1" || trxCardType == "3") && tempConvRate == "9999999") ||
 		merchOrg != "000" ||
 		tempConvRate == "0000000"
 
 	if isDefaultRate {
-		// Konversi ke float32 saat mengembalikan nilai
+		// Convert to float32 upon returning the value
 		return float32(orgAmount)
 	}
 
-	// 3. Parse rate dengan presisi 32-bit.
+	// 3. Parse the rate with 32-bit precision.
 	convRate, err := strconv.ParseFloat(tempConvRate, 32)
 	if err != nil || convRate <= 0 {
-		// Konversi ke float32 saat mengembalikan nilai
+		// Convert to float32 upon returning the value
 		return float32(orgAmount)
 	}
 
-	// 4. Kalkulasi tetap menggunakan float64 untuk presisi terbaik selama perhitungan
+	// 4. Calculations remain in float64 for best precision during the operation
 	divisor := math.Pow(10, float64(decx))
 	finalRate := convRate / divisor
 
@@ -180,7 +180,7 @@ func trxOrgAmountSimple(amountStr, trxCardType, merchOrg, tempConvRate string, d
 		return float32(orgAmount)
 	}
 
-	// 5. Hitung hasil akhir sebagai float64, lalu konversi ke float32 saat return
+	// 5. Calculate the final result as a float64, then convert to float32 on return
 	result := orgAmount / finalRate
 	return float32(result)
 }
