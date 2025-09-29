@@ -2,12 +2,13 @@ package handler
 
 import (
 	"context"
+	"encoding/binary"
 	"io" // Diperlukan untuk io.ReadAll
 	"log"
 	"net"
 )
 
-// GatewayServiceDef mendefinisikan interface yang harus dipenuhi oleh service layer.
+// GatewayServiceDef defines the interface that must be implemented by the service layer.
 type GatewayServiceDef interface {
 	ProcessAndForwardMessage(ctx context.Context, rawMessage []byte) error
 }
@@ -22,53 +23,59 @@ func NewTCPHandler(svc GatewayServiceDef) *TCPHandler {
 	}
 }
 
-// HandleConnection sekarang jauh lebih sederhana.
+// HandleConnection to handle one TCP connection.
 func (h *TCPHandler) HandleConnection(conn net.Conn) {
 	defer conn.Close()
-	log.Printf("Menangani koneksi baru dari: %s", conn.RemoteAddr())
+	log.Printf("Handling new connection from: %s", conn.RemoteAddr())
 
-	// Tidak ada lagi 'for' loop, karena kita berasumsi 1 koneksi = 1 pesan.
+	for {
+		// 1. Read 2-byte length header
+		header := make([]byte, 2)
+		if _, err := io.ReadFull(conn, header); err != nil {
+			if err == io.EOF {
+				log.Printf("Connection closed by client: %s", conn.RemoteAddr())
+			} else {
+				log.Printf("ERROR: Failed to read header from %s:", err)
+			}
+			break
+		}
+		length := int(binary.BigEndian.Uint16(header))
 
-	// 1. Baca SEMUA data dari koneksi sampai koneksi ditutup oleh klien.
-	rawBody, err := io.ReadAll(conn)
-	if err != nil {
-		log.Printf("ERROR: Gagal membaca data dari koneksi: %v", err)
-		return // Keluar dari fungsi karena koneksi bermasalah.
+		if length <= 0 {
+			log.Printf("Received header, expected message length: %d bytes", length)
+		} else {
+			// 2. Read the entire message body based on the length
+			rawBody := make([]byte, length)
+			if _, err := io.ReadFull(conn, rawBody); err != nil {
+				log.Printf("ERROR: Failed to read message body: %v", err)
+				break
+			}
+
+			ctx := context.Background()
+			if err := h.service.ProcessAndForwardMessage(ctx, rawBody); err != nil {
+				log.Printf("ERROR: Failed to process message: %v", err)
+			}
+		}
+
 	}
-
-	// Cek apakah ada data yang diterima sebelum melanjutkan
-	if len(rawBody) == 0 {
-		log.Printf("Koneksi ditutup tanpa menerima data.")
-		return
-	}
-
-	log.Printf("Menerima total %d byte data.", len(rawBody))
-
-	// 2. Teruskan seluruh body mentah ke service layer untuk diproses.
-	ctx := context.Background()
-	if err := h.service.ProcessAndForwardMessage(ctx, rawBody); err != nil {
-		log.Printf("ERROR: Gagal memproses pesan: %v", err)
-	}
-
-	log.Printf("Selesai memproses pesan dari %s", conn.RemoteAddr())
 }
 
-// StartServer memulai TCP listener dan menerima koneksi.
+// StartServer starts the TCP listener and accepts connections.
 func (h *TCPHandler) StartServer(port string) {
 	listener, err := net.Listen("tcp", port)
 	if err != nil {
-		log.Fatalf("FATAL: Gagal memulai TCP server di port %s: %v", port, err)
+		log.Fatalf("FATAL: Failed to start TCP server on port %s: %v", port, err)
 	}
 	defer listener.Close()
-	log.Printf("🚀 Gateway Service berjalan di port TCP %s", port)
+	log.Printf("🚀 Gateway Service is running on TCP port %s", port)
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Printf("ERROR: Gagal menerima koneksi: %v", err)
+			log.Printf("ERROR: Failed to accept connection: %v", err)
 			continue
 		}
-		// Setiap koneksi baru akan ditangani oleh HandleConnection.
+		// Each new connection will be handled by HandleConnection.
 		go h.HandleConnection(conn)
 	}
 }

@@ -26,7 +26,7 @@ message Transaction{
   string trxCode = 8;
   string trxReffNumber = 9;
   float  trxAmount = 10;
-  float  trxBillAmount = 11;
+  string  trxBillAmount = 11;
   string cardExpired = 12;
   string merchCategory = 13;
   string trxCountry = 14;
@@ -42,14 +42,16 @@ message Transaction{
   string trxCvv2Result = 24;
   string trxCavResult = 25;
   string trxArqcResult = 26;
-  string trxCurrency = 27;
-  string trxInstallment = 28;
-  string trxDeclineReason = 29;
-  string trxTerminalId = 30;
-  string trxMerchantId = 31;
-  string trxAcqId = 32;
-  string trxFwdId = 33;
-  string trxChbCurr = 34;
+  string trxChipData = 27;
+  string trxCurrency = 28;
+  string trxInstallment = 29;
+  string trxDeclineReason = 30;
+  string trxTerminalId = 31;
+  string trxMerchantId = 32;
+  string trxAcqId = 33;
+  string trxFwdId = 34;
+  string trxChbCurr = 35;
+  float trxOrgAmount = 36;
 }
 
 // Struktur untuk hasil evaluasi risiko

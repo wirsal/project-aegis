@@ -1,0 +1,40 @@
+[
+  {
+    "rule_code": "HIGH-AMT-DOMESTIC",
+    "rule_type": "FRAUD",
+    "org": "000",
+    "type": "000",
+    "block_code": "0",
+    "cr_limit": "0-999999999999",
+    "merch_category": "0000",
+    "trans_code": "000",
+    "country_code": "I360",
+    "currency_code": "A000",
+    "amount": "10000000-999999999999",
+    "pos_cond_code": "AA",
+    "resp_code": "00",
+    "time_stamp": "000000-235959",
+    "installment_ind": "-",
+    "first_usage_flag": "-",
+    "card_list": ""
+  },
+  {
+    "rule_code": "FOREIGN-TRX",
+    "rule_type": "FRAUD",
+    "org": "000",
+    "type": "000",
+    "block_code": "0",
+    "cr_limit": "0-999999999999",
+    "merch_category": "0000",
+    "trans_code": "000",
+    "country_code": "E360",
+    "currency_code": "840",
+    "amount": "0-999999999999",
+    "pos_cond_code": "AA",
+    "resp_code": "AA",
+    "time_stamp": "000000-235959",
+    "installment_ind": "-",
+    "first_usage_flag": "-",
+    "card_list": ""
+  }
+]

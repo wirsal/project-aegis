@@ -25,7 +25,11 @@ func main() {
 	grpcServer := grpc.NewServer()
 
 	// 3. Buat instance dari implementasi service kita
-	ruleEngineServer := service.NewRuleEngineServer()
+	// PERUBAHAN: Masukkan path ke file "rules.json" sebagai argumen.
+	ruleEngineServer, err := service.NewRuleEngineServer("./configs/rules.json")
+	if err != nil {
+		log.Fatalf("FATAL: Gagal inisialisasi Rule Engine Service: %v", err)
+	}
 
 	// 4. Daftarkan service kita ke server gRPC
 	pb.RegisterRuleEngineServer(grpcServer, ruleEngineServer)

@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/yerden/go-util v1.1.4 // indirect
 	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
