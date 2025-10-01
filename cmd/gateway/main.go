@@ -12,27 +12,36 @@ import (
 	"github.com/wirsal/project-aegis/pkg/config"
 )
 
+// cmd/gateway/main.go
+
 func main() {
-	// Load configuration from file
 	cfg, err := config.LoadConfig("./configs")
 	if err != nil {
 		log.Fatalf("FATAL: could not load config: %v", err)
 	}
 
-	// Use the value from config, not a constant
-	// PERUBAHAN: Gunakan grpc.NewClient
-	conn, err := grpc.NewClient(cfg.Gateway.RuleEngineAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Buat koneksi ke Rule Engine Service
+	ruleEngineConn, err := grpc.NewClient(cfg.Gateway.RuleEngineAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("FATAL: Failed to connect to gRPC server: %v", err)
+		log.Fatalf("FATAL: Failed to connect to Rule Engine gRPC server: %v", err)
 	}
-	defer conn.Close()
-
-	ruleEngineClient := pb.NewRuleEngineClient(conn)
+	defer ruleEngineConn.Close()
+	ruleEngineClient := pb.NewRuleEngineClient(ruleEngineConn)
 	log.Println("Successfully connected to Rule Engine Service.")
 
-	gatewayService := service.NewGatewayService(ruleEngineClient)
+	// --- TAMBAHAN: Buat koneksi ke Persistence Service ---
+	persistenceConn, err := grpc.NewClient(cfg.Persistence.GRPCPAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("FATAL: Failed to connect to Persistence Service: %v", err)
+	}
+	defer persistenceConn.Close()
+	persistenceClient := pb.NewPersistenceClient(persistenceConn)
+	log.Println("Successfully connected to Persistence Service.")
+	// --------------------------------------------------
+
+	// Suntikkan KEDUA klien ke dalam Gateway Service
+	gatewayService := service.NewGatewayService(ruleEngineClient, persistenceClient)
 	tcpHandler := handler.NewTCPHandler(gatewayService)
 
-	// Use the port from config
 	tcpHandler.StartServer(cfg.Gateway.TCPPort)
 }
