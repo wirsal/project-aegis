@@ -6,31 +6,27 @@ import (
 	"math"
 	"strconv"
 
-	// Required for EBCDIC -> ASCII
 	"google.golang.org/grpc"
 
+	"github.com/segmentio/ksuid"
 	pb "github.com/wirsal/project-aegis/api/protos"
 	"github.com/wirsal/project-aegis/pkg/codec"
 )
 
-// The RuleEngineClient interface definition remains the same
 type RuleEngineClient interface {
 	AnalyzeTransaction(ctx context.Context, in *pb.Transaction, opts ...grpc.CallOption) (*pb.RiskResult, error)
 }
 
-// The GatewayService struct remains the same
 type GatewayService struct {
 	ruleEngineClient RuleEngineClient
 }
 
-// The NewGatewayService function remains the same
 func NewGatewayService(client RuleEngineClient) *GatewayService {
 	return &GatewayService{
 		ruleEngineClient: client,
 	}
 }
 
-// ProcessAndForwardMessage now contains all the logic.
 func (s *GatewayService) ProcessAndForwardMessage(ctx context.Context, rawMessage []byte) error {
 	log.Println("Starting translation and parsing of custom message...")
 
@@ -51,7 +47,6 @@ func (s *GatewayService) ProcessAndForwardMessage(ctx context.Context, rawMessag
 	return nil
 }
 
-// ParseAndMapTransaction was renamed from ReadTransaction for clarity
 func (s *GatewayService) ParseAndMapTransaction(data string) (*pb.Transaction, error) {
 	log.Println("Parsing and mapping transaction data from ASCII string...")
 
@@ -63,6 +58,7 @@ func (s *GatewayService) ParseAndMapTransaction(data string) (*pb.Transaction, e
 
 	// Direct mapping from parsed data to the Protobuf struct
 	trx := &pb.Transaction{
+		TrxId:            generateTrxId(),
 		TrxDate:          codec.Hex2string_comp3(data[0:4])[0:7],
 		TrxTime:          codec.Hex2string_comp3(data[4:8])[:7],
 		CardOrg:          codec.Hex2string_comp3(data[8:10])[:3],
@@ -183,4 +179,10 @@ func trxOrgAmountSimple(amountStr, trxCardType, merchOrg, tempConvRate string, d
 	// 5. Calculate the final result as a float64, then convert to float32 on return
 	result := orgAmount / finalRate
 	return float32(result)
+}
+
+// Generate unique transaction ID using KSUID
+func generateTrxId() string {
+	id := ksuid.New()
+	return id.String()
 }

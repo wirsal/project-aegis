@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -36,11 +37,13 @@ type Rule struct {
 
 // Ganti nama struct menjadi 'Service' untuk merepresentasikan lapisan logika bisnis
 type Service struct {
-	rules []Rule
+	rules              []Rule
+	persistenceClient  pb.PersistenceClient
+	notificationClient pb.NotificationClient
 }
 
 // Ganti nama constructor menjadi 'NewService'
-func NewService(rulesPath string) (*Service, error) {
+func NewService(rulesPath string, psc pb.PersistenceClient, nsc pb.NotificationClient) (*Service, error) {
 	rules, err := loadRules(rulesPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load rules: %w", err)
@@ -51,7 +54,11 @@ func NewService(rulesPath string) (*Service, error) {
 	})
 
 	log.Printf("Successfully loaded and sorted %d rules from %s", len(rules), rulesPath)
-	return &Service{rules: rules}, nil
+	return &Service{
+		rules:              rules,
+		persistenceClient:  psc,
+		notificationClient: nsc,
+	}, nil
 }
 
 // fungsi loadRules tetap sama
@@ -72,25 +79,28 @@ func (s *Service) AnalyzeTransaction(in *pb.Transaction) *pb.RiskResult {
 
 	for _, rule := range s.rules {
 		if s.validateRule(rule, in) {
-			log.Printf("✅ Transaction MATCHED rule with priority %d: %s %s", rule.Priority, rule.RuleCode, rule.RuleDesc)
+			log.Printf("✅ Transaction MATCHED rule with priority %d: %s", rule.Priority, rule.RuleCode)
 
-			// TODO: Panggil Persistence Service di sini jika diperlukan
-
-			return &pb.RiskResult{
-				Rrn:            in.TrxReffNumber,
+			// Buat RiskResult yang akan dikirim
+			riskResult := &pb.RiskResult{
+				Trxid:          in.TrxId,
 				RiskLevel:      pb.RiskResult_HIGH,
 				TriggeredRules: []string{rule.RuleCode},
 				RiskScore:      100,
 			}
+
+			go s.callPersistence(in, riskResult)
+			go s.callNotification(riskResult)
+
+			return riskResult
 		}
 	}
 
 	log.Printf("Transaction did not match any rules.")
+	// ... (return untuk kasus LOW risk tetap sama) ...
 	return &pb.RiskResult{
-		Rrn:            in.TrxReffNumber,
-		RiskLevel:      pb.RiskResult_LOW,
-		TriggeredRules: []string{},
-		RiskScore:      0,
+		Trxid:     in.TrxId,
+		RiskLevel: pb.RiskResult_LOW,
 	}
 }
 
@@ -105,4 +115,31 @@ func (s *Service) validateRule(rule Rule, trx *pb.Transaction) bool {
 		vInList(rule.PosCondCode, trx.TrxPosMode, "00") &&
 		vInList(rule.RespCode, trx.TrxRespCode, "00") &&
 		vInRange(rule.Amount, amountInt)
+}
+
+func (s *Service) callPersistence(trxData *pb.Transaction, riskData *pb.RiskResult) {
+	log.Printf("Calling Persistence Service for TrxID: %s", trxData.TrxId)
+
+	req := &pb.StoreTransactionRequest{
+		TransactionData: trxData,
+		RiskData:        riskData,
+	}
+
+	_, err := s.persistenceClient.StoreTransaction(context.Background(), req)
+	if err != nil {
+		log.Printf("ERROR: Failed to call Persistence Service: %v", err)
+	} else {
+		log.Printf("Successfully called Persistence Service for TrxID: %s", trxData.TrxId)
+	}
+}
+
+func (s *Service) callNotification(riskData *pb.RiskResult) {
+	log.Printf("Calling Notification Service for RRN: %s", riskData.Trxid)
+
+	_, err := s.notificationClient.SendRiskNotification(context.Background(), riskData)
+	if err != nil {
+		log.Printf("ERROR: Failed to call Notification Service: %v", err)
+	} else {
+		log.Printf("Successfully called Notification Service for TrxId: %s", riskData.Trxid)
+	}
 }

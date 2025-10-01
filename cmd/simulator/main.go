@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"log"
 	"net"
-	"regexp" // <-- 1. Impor package regexp
+	"regexp"
 )
 
 // hexPayload berisi string heksadesimal dari log Anda.

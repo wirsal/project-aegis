@@ -90,26 +90,34 @@ go run main.go
 ### ⚙️ Configuration
 The risk rules can be easily configured in the config/rules.yaml file without changing any code.
 Example config/rules.yaml:
-```yaml
-rules:rules:
-  - name: "HighAmountTransaction"
-    description: "Transaction amount exceeds the high-value threshold."
-    field: "amount"
-    operator: "greater_than"
-    value: 5000000
-    risk_score: 50
-  - name: "ManualCardEntry"
-    description: "POS entry mode indicates manual key-in, which is riskier."
-    field: "pos_entry_mode"
-    operator: "equals"
-    value: "012" # Code for manual entry
-    risk_score: 30
-  - name: "LateNightTransaction"
-    description: "Transaction occurs during unusual hours."
-    field: "transaction_time" # HHMMSS format
-    operator: "between"
-    value: ["010000", "040000"]
-    risk_score: 20
+```JSON
+[
+  {
+    "rule_code": "HRMC1",
+    "rule_type": "HRMC1",
+    "rule_desc": "Transaksi High Risk Merchant Regular",
+    "priority": 1,
+    "status": 1,
+    "org": "001;002;",
+    "type": "001;002;011;012;101;102;121;122;141;142;152;191;192;201;202;203;213;221;222;225;233;252;301;302;303;304;305;352;401;402;403;404;405;406;407;501;502;599;601;602;704;801;802l",
+    "block_code": "_;P;Q;V",
+    "cr_limit": "1-1999999999",
+    "merch_category": "0000;",
+    "trans_code": "000;",
+    "country_code": "I360;840",
+    "currency_code": "I360;840",
+    "amount": "0-1999999999",
+    "pos_cond_code": "00;01;02;05;80;81;82;90;91",
+    "resp_code": "00",
+    "time_stamp": "000000-235959",
+    "installment_ind": "-",
+    "first_usage_flag": "-",
+    "card_list": "",
+    "desc": "-",
+    "channel": "EMAIL,WA,SMS",
+    "redaksional": "EM2,WA1,SM2687"
+  },
+]
 ```
 ---
 ### 📜 API Contract (gRPC)
@@ -121,19 +129,48 @@ syntax = "proto3";
 
 package risk;
 
-option go_package = "[github.com/wirsal/project-aegis/protos](https://github.com/wirsal/project-aegis/protos)";
+option go_package = "api/protos";
 
-// A financial transaction
-message Transaction {
-  string rrn = 1;
-  string pan = 2; // Should be masked
-  int64 amount = 3;
-  string terminal_id = 4;
-  string pos_entry_mode = 5;
-  string transaction_time = 6; // HHMMSS
+message Transaction{
+  string trxDate = 1;
+  string trxTime = 2;
+  string cardOrg = 3;
+  string cardType = 4;
+  string cardNumber = 5;
+  string merchOrg = 6;
+  string merchNumber = 7;
+  string trxCode = 8;
+  string trxReffNumber = 9;
+  float  trxAmount = 10;
+  string trxBillAmount = 11;
+  string cardExpired = 12;
+  string merchCategory = 13;
+  string trxCountry = 14;
+  string trxAuthCode = 15;
+  string trxCardType = 16;
+  string trxRespCode = 17;
+  string trxMerchantName = 18;
+  string trxPinCap = 19;
+  string trxPosMode = 20;
+  string trxPosData = 21;
+  string trxStip = 22;
+  string trxCvvResult = 23;
+  string trxCvv2Result = 24;
+  string trxCavResult = 25;
+  string trxArqcResult = 26;
+  string trxChipData = 27;
+  string trxCurrency = 28;
+  string trxInstallment = 29;
+  string trxDeclineReason = 30;
+  string trxTerminalId = 31;
+  string trxMerchantId = 32;
+  string trxAcqId = 33;
+  string trxFwdId = 34;
+  string trxChbCurr = 35;
+  float trxOrgAmount = 36;
 }
 
-// Result of the risk analysis
+// Struktur untuk hasil evaluasi risiko
 message RiskResult {
   string rrn = 1;
   enum RiskLevel {
@@ -146,9 +183,19 @@ message RiskResult {
   int32 risk_score = 4;
 }
 
-// Rule Engine Service Definition
+// Service untuk Rule Engine
 service RuleEngine {
   rpc AnalyzeTransaction(Transaction) returns (RiskResult);
+}
+
+// Service untuk Persistence
+service Persistence {
+  rpc StoreTransaction(RiskResult) returns (StoreAck);
+}
+
+message StoreAck {
+  bool success = 1;
+  string message = 2;
 }
 ```
 

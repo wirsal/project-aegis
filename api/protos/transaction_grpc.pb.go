@@ -108,7 +108,10 @@ var RuleEngine_ServiceDesc = grpc.ServiceDesc{
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PersistenceClient interface {
-	StoreTransaction(ctx context.Context, in *RiskResult, opts ...grpc.CallOption) (*StoreAck, error)
+	// Tugas 1: Menyimpan semua transaksi mentah
+	StoreRawTransaction(ctx context.Context, in *Transaction, opts ...grpc.CallOption) (*StoreAck, error)
+	// Tugas 2: Menyimpan hasil dari Rule Engine
+	StoreTransaction(ctx context.Context, in *StoreTransactionRequest, opts ...grpc.CallOption) (*StoreAck, error)
 }
 
 type persistenceClient struct {
@@ -119,7 +122,16 @@ func NewPersistenceClient(cc grpc.ClientConnInterface) PersistenceClient {
 	return &persistenceClient{cc}
 }
 
-func (c *persistenceClient) StoreTransaction(ctx context.Context, in *RiskResult, opts ...grpc.CallOption) (*StoreAck, error) {
+func (c *persistenceClient) StoreRawTransaction(ctx context.Context, in *Transaction, opts ...grpc.CallOption) (*StoreAck, error) {
+	out := new(StoreAck)
+	err := c.cc.Invoke(ctx, "/risk.Persistence/StoreRawTransaction", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *persistenceClient) StoreTransaction(ctx context.Context, in *StoreTransactionRequest, opts ...grpc.CallOption) (*StoreAck, error) {
 	out := new(StoreAck)
 	err := c.cc.Invoke(ctx, "/risk.Persistence/StoreTransaction", in, out, opts...)
 	if err != nil {
@@ -132,7 +144,10 @@ func (c *persistenceClient) StoreTransaction(ctx context.Context, in *RiskResult
 // All implementations must embed UnimplementedPersistenceServer
 // for forward compatibility
 type PersistenceServer interface {
-	StoreTransaction(context.Context, *RiskResult) (*StoreAck, error)
+	// Tugas 1: Menyimpan semua transaksi mentah
+	StoreRawTransaction(context.Context, *Transaction) (*StoreAck, error)
+	// Tugas 2: Menyimpan hasil dari Rule Engine
+	StoreTransaction(context.Context, *StoreTransactionRequest) (*StoreAck, error)
 	mustEmbedUnimplementedPersistenceServer()
 }
 
@@ -140,7 +155,10 @@ type PersistenceServer interface {
 type UnimplementedPersistenceServer struct {
 }
 
-func (UnimplementedPersistenceServer) StoreTransaction(context.Context, *RiskResult) (*StoreAck, error) {
+func (UnimplementedPersistenceServer) StoreRawTransaction(context.Context, *Transaction) (*StoreAck, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StoreRawTransaction not implemented")
+}
+func (UnimplementedPersistenceServer) StoreTransaction(context.Context, *StoreTransactionRequest) (*StoreAck, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StoreTransaction not implemented")
 }
 func (UnimplementedPersistenceServer) mustEmbedUnimplementedPersistenceServer() {}
@@ -156,8 +174,26 @@ func RegisterPersistenceServer(s grpc.ServiceRegistrar, srv PersistenceServer) {
 	s.RegisterService(&Persistence_ServiceDesc, srv)
 }
 
+func _Persistence_StoreRawTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Transaction)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PersistenceServer).StoreRawTransaction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/risk.Persistence/StoreRawTransaction",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PersistenceServer).StoreRawTransaction(ctx, req.(*Transaction))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Persistence_StoreTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RiskResult)
+	in := new(StoreTransactionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -169,7 +205,7 @@ func _Persistence_StoreTransaction_Handler(srv interface{}, ctx context.Context,
 		FullMethod: "/risk.Persistence/StoreTransaction",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PersistenceServer).StoreTransaction(ctx, req.(*RiskResult))
+		return srv.(PersistenceServer).StoreTransaction(ctx, req.(*StoreTransactionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -182,8 +218,100 @@ var Persistence_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*PersistenceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "StoreRawTransaction",
+			Handler:    _Persistence_StoreRawTransaction_Handler,
+		},
+		{
 			MethodName: "StoreTransaction",
 			Handler:    _Persistence_StoreTransaction_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "api/protos/transaction.proto",
+}
+
+// NotificationClient is the client API for Notification service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type NotificationClient interface {
+	// Mengirim hasil risiko sebagai notifikasi
+	SendRiskNotification(ctx context.Context, in *RiskResult, opts ...grpc.CallOption) (*NotificationAck, error)
+}
+
+type notificationClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewNotificationClient(cc grpc.ClientConnInterface) NotificationClient {
+	return &notificationClient{cc}
+}
+
+func (c *notificationClient) SendRiskNotification(ctx context.Context, in *RiskResult, opts ...grpc.CallOption) (*NotificationAck, error) {
+	out := new(NotificationAck)
+	err := c.cc.Invoke(ctx, "/risk.Notification/SendRiskNotification", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// NotificationServer is the server API for Notification service.
+// All implementations must embed UnimplementedNotificationServer
+// for forward compatibility
+type NotificationServer interface {
+	// Mengirim hasil risiko sebagai notifikasi
+	SendRiskNotification(context.Context, *RiskResult) (*NotificationAck, error)
+	mustEmbedUnimplementedNotificationServer()
+}
+
+// UnimplementedNotificationServer must be embedded to have forward compatible implementations.
+type UnimplementedNotificationServer struct {
+}
+
+func (UnimplementedNotificationServer) SendRiskNotification(context.Context, *RiskResult) (*NotificationAck, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendRiskNotification not implemented")
+}
+func (UnimplementedNotificationServer) mustEmbedUnimplementedNotificationServer() {}
+
+// UnsafeNotificationServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to NotificationServer will
+// result in compilation errors.
+type UnsafeNotificationServer interface {
+	mustEmbedUnimplementedNotificationServer()
+}
+
+func RegisterNotificationServer(s grpc.ServiceRegistrar, srv NotificationServer) {
+	s.RegisterService(&Notification_ServiceDesc, srv)
+}
+
+func _Notification_SendRiskNotification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RiskResult)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NotificationServer).SendRiskNotification(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/risk.Notification/SendRiskNotification",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NotificationServer).SendRiskNotification(ctx, req.(*RiskResult))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// Notification_ServiceDesc is the grpc.ServiceDesc for Notification service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var Notification_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "risk.Notification",
+	HandlerType: (*NotificationServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "SendRiskNotification",
+			Handler:    _Notification_SendRiskNotification_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

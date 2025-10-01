@@ -29,12 +29,16 @@ go.work.sum
 
 # Editor/IDE
 # .idea/
-# .vscode/
+.vscode/
+.DS_Store
 
-
-# Ignore all configs except sample
-!configs/.sample.config.yaml
+# Ignore all yaml/json in configs
 configs/*.yaml
+configs/*.json
+
+# But keep sample files
+!configs/.sample.config.yaml
+!configs/.sample.rules.json
 
 # Ignore build artifacts
 bin/
