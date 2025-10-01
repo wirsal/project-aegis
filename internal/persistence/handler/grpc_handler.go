@@ -23,7 +23,7 @@ func NewGRPCHandler(svc *service.Service) *GRPCHandler {
 
 // StoreRawTransaction hanya mendelegasikan tugas ke service layer.
 func (h *GRPCHandler) StoreRawTransaction(ctx context.Context, in *pb.Transaction) (*pb.StoreAck, error) {
-	log.Printf("gRPC handler received StoreRawTransaction for TrxID: %s", in.TrxId)
+	log.Printf("gRPC handler received StoreRawTransaction for TrxKey: %s", in.TrxKey)
 	err := h.service.StoreRawTransaction(ctx, in)
 	if err != nil {
 		return &pb.StoreAck{Success: false, Message: err.Error()}, nil
@@ -33,8 +33,8 @@ func (h *GRPCHandler) StoreRawTransaction(ctx context.Context, in *pb.Transactio
 
 // StoreTransaction hanya mendelegasikan tugas ke service layer.
 func (h *GRPCHandler) StoreTransaction(ctx context.Context, in *pb.StoreTransactionRequest) (*pb.StoreAck, error) {
-	log.Printf("gRPC handler received StoreTransaction for TrxID: %s", in.GetTransactionData().GetTrxId())
-	err := h.service.StoreTransaction(ctx, in)
+	log.Printf("gRPC handler received StoreTransaction for TrxKey: %s", in.GetTransactionData().GetTrxKey())
+	err := h.service.StoreRiskResult(ctx, in)
 	if err != nil {
 		return &pb.StoreAck{Success: false, Message: err.Error()}, nil
 	}

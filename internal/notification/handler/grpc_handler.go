@@ -20,7 +20,7 @@ func NewGRPCHandler(svc *service.Service) *GRPCHandler {
 }
 
 func (h *GRPCHandler) SendRiskNotification(ctx context.Context, in *pb.RiskResult) (*pb.NotificationAck, error) {
-	log.Printf("gRPC handler received SendRiskNotification for RRN: %s", in.Trxid)
+	log.Printf("gRPC handler received SendRiskNotification for TrxKey: %s", in.TrxKey)
 	err := h.service.SendRiskNotification(ctx, in)
 	if err != nil {
 		return &pb.NotificationAck{Success: false, DeliveryStatus: "FAILED"}, nil

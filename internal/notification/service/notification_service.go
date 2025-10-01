@@ -29,7 +29,7 @@ func NewService(externalAPIURL string) *Service {
 func (s *Service) SendRiskNotification(ctx context.Context, riskData *pb.RiskResult) error {
 	// 1. Convert the protobuf message to a map for easy JSON marshaling
 	payload := map[string]interface{}{
-		"trx_id":            riskData.GetTrxid(),
+		"trx_key":           riskData.GetTrxKey(),
 		"risk_level":        riskData.GetRiskLevel().String(),
 		"risk_score":        riskData.GetRiskScore(),
 		"triggered_rules":   riskData.GetTriggeredRules(),
@@ -59,9 +59,9 @@ func (s *Service) SendRiskNotification(ctx context.Context, riskData *pb.RiskRes
 
 	// 5. Check the response
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		log.Printf("Successfully sent notification for RRN: %s, Status: %s", riskData.GetTrxid(), resp.Status)
+		log.Printf("Successfully sent notification for TrxKey: %s, Status: %s", riskData.GetTrxKey(), resp.Status)
 	} else {
-		log.Printf("ERROR: Notification sent for RRN %s failed with status: %s", riskData.GetTrxid(), resp.Status)
+		log.Printf("ERROR: Notification sent for TrxKey %s failed with status: %s", riskData.GetTrxKey(), resp.Status)
 	}
 
 	return nil

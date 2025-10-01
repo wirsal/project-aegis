@@ -172,7 +172,7 @@ message Transaction{
 
 // Struktur untuk hasil evaluasi risiko
 message RiskResult {
-  string rrn = 1;
+  string trxKey = 1;
   enum RiskLevel {
     LOW = 0;
     MEDIUM = 1;

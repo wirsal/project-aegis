@@ -5,7 +5,7 @@ package risk;
 option go_package = "api/protos";
 
 message Transaction{
-  string trxId = 1;
+  string trxKey= 1;
   string trxDate = 2;
   string trxTime = 3;
   string cardOrg = 4;
@@ -46,15 +46,18 @@ message Transaction{
 
 // Struktur untuk hasil evaluasi risiko
 message RiskResult {
-  string trxid = 1;
   enum RiskLevel {
     LOW = 0;
     MEDIUM = 1;
     HIGH = 2;
   }
+  string trxKey = 1;
   RiskLevel risk_level = 2;
   repeated string triggered_rules = 3;
   int32 risk_score = 4;
+  string rule_code = 5;
+  string rule_type = 6;
+  string rule_desc = 7;
 }
 
 // Service untuk Rule Engine

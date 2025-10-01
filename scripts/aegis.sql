@@ -1,6 +1,7 @@
+-- Table structure for table `transaction_log`
 CREATE TABLE transaction_log (
     id SERIAL PRIMARY KEY,
-    trx_id VARCHAR(20) NOT NULL UNIQUE,
+    trx_key VARCHAR(30) NOT NULL UNIQUE,
     card_org VARCHAR(3) NOT NULL,
     card_type VARCHAR(3) NOT NULL,
     card_number VARCHAR(16) NOT NULL,
@@ -44,7 +45,40 @@ CREATE TABLE transaction_log (
 );
 
 -- Indexes
-CREATE INDEX idx_trx_id ON transaction_log (trx_id);
+CREATE INDEX idx_trx_key ON transaction_log (trx_key);
 CREATE INDEX idx_cardacct_authcode_date ON transaction_log (card_number, trx_authcode, trx_date);
 
 
+
+--- Table structure for table `risk_results`
+CREATE TABLE risk_results (
+    rr_id BIGSERIAL PRIMARY KEY,
+    rr_key VARCHAR(51) NOT NULL UNIQUE,
+    rr_card VARCHAR(16) NOT NULL DEFAULT '',
+    rr_desc VARCHAR(50) DEFAULT '',
+    rr_desc_add1 VARCHAR(400),
+    rr_desc_add2 VARCHAR(400),
+    rr_desc_add3 VARCHAR(400),
+    rr_curr_code VARCHAR(3) DEFAULT '',
+    rr_amount VARCHAR(16),
+    rr_amount_add1 VARCHAR(20),
+    rr_amount_add2 VARCHAR(20),
+    rr_datetime TIMESTAMP,
+    rr_date_add1 DATE,
+    rr_date_add2 DATE,
+    rr_rule_code VARCHAR(10) NOT NULL,
+    rr_type VARCHAR(10) NOT NULL,
+    rr_date_proc TIMESTAMP NOT NULL,
+    rr_date_vald TIMESTAMP NOT NULL,
+    rr_date_write TIMESTAMP NOT NULL
+);
+-- Comment untuk kolom tinyint
+COMMENT ON COLUMN risk_results.rr_notif_act IS '0 : Not Proses; 1 : email; 2 : HP; 3 : semuanya';
+
+-- -- Indexes
+-- CREATE INDEX idx_rr_datetime ON risk_results (rr_datetime);
+-- CREATE INDEX idx_rr_notif_code ON risk_results (rr_notif_code);
+-- CREATE INDEX idx_cek1 ON risk_results (rr_card, rr_datetime, rr_notif_code);
+-- CREATE INDEX idx_cek2 ON risk_results (rr_datetime, rr_notif_code);
+-- CREATE INDEX idx_fk_rr_otorisasi_input1 ON risk_results (rr_card, rr_datetime);
+-- CREATE INDEX idx_type_card ON risk_results (rr_datetime, rr_key);

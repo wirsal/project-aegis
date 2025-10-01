@@ -45,23 +45,23 @@ func (s *GatewayService) ProcessAndForwardMessage(ctx context.Context, rawMessag
 	go s.storeRawTransaction(protoMsg)
 
 	// 3. Panggil Rule Engine Service untuk analisis
-	log.Printf("✅ Message parsed. Sending transaction (ID: %s) to Rule Engine...", protoMsg.TrxId)
+	log.Printf("✅ Message parsed. Sending transaction (ID: %s) to Rule Engine...", protoMsg.TrxKey)
 	riskResult, err := s.ruleEngineClient.AnalyzeTransaction(ctx, protoMsg)
 	if err != nil {
 		log.Printf("ERROR: gRPC call to Rule Engine failed: %v", err)
 		return err
 	}
 
-	log.Printf("✅ Response from Rule Engine received for TrxID %s. Risk Score: %d", protoMsg.TrxId, riskResult.RiskScore)
+	log.Printf("✅ Response from Rule Engine received for TrxKey %s. Risk Score: %d", protoMsg.TrxKey, riskResult.RiskScore)
 	return nil
 }
 
 func (s *GatewayService) storeRawTransaction(trx *pb.Transaction) {
-	log.Printf("Storing raw transaction (TrxID: %s) to persistence...", trx.TrxId)
+	log.Printf("Storing raw transaction (TrxKey: %s) to persistence...", trx.TrxKey)
 	_, err := s.persistenceClient.StoreRawTransaction(context.Background(), trx)
 	if err != nil {
-		log.Printf("ERROR: Failed to store raw transaction for TrxID %s: %v", trx.TrxId, err)
+		log.Printf("ERROR: Failed to store raw transaction for TrxKey %s: %v", trx.TrxKey, err)
 	} else {
-		log.Printf("✅ Raw transaction (TrxID: %s) stored successfully.", trx.TrxId)
+		log.Printf("✅ Raw transaction (TrxKey: %s) stored successfully.", trx.TrxKey)
 	}
 }

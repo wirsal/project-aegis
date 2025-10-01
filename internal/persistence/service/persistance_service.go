@@ -39,24 +39,22 @@ func (s *Service) StoreRawTransaction(ctx context.Context, trx *pb.Transaction) 
 		return fmt.Errorf("failed to insert raw transaction: %w", err)
 	}
 
-	log.Printf("Successfully stored raw transaction with ID: %s", model.TrxID)
+	log.Printf("Successfully stored raw transaction with ID: %s", model.TrxKey)
 	return nil
 }
 
-func (s *Service) StoreTransaction(ctx context.Context, req *pb.StoreTransactionRequest) error {
-	trx := req.GetTransactionData()
-	risk := req.GetRiskData()
-
-	// Contoh query SQL INSERT. Sesuaikan nama tabel dan kolom Anda.
-	query := `INSERT INTO processed_transactions (trx_id, card_number, amount, currency, risk_level, risk_score, triggered_rules) 
-	           VALUES ($1, $2, $3, $4, $5, $6, $7)`
-	// println("queryStr:", query)
-
-	_, err := s.db.ExecContext(ctx, query, trx.TrxId, trx.CardNumber, trx.TrxAmount, trx.TrxCurrency, risk.GetRiskLevel().String(), risk.GetRiskScore(), risk.GetTriggeredRules())
+func (s *Service) StoreRiskResult(ctx context.Context, req *pb.StoreTransactionRequest) error {
+	model, err := mapToRiskResultModel(req)
 	if err != nil {
-		return fmt.Errorf("failed to insert processed transaction: %w", err)
+		return fmt.Errorf("failed to map risk result to model: %w", err)
 	}
 
-	log.Printf("Successfully stored processed transaction with ID: %s", trx.TrxId)
+	_, err = s.db.NamedExecContext(ctx, insertRiskResultQuery, model)
+	if err != nil {
+		log.Printf("ERROR: failed to insert risk result : %v", err)
+		return fmt.Errorf("failed to insert risk result: %w", err)
+	}
+
+	log.Printf("Successfully stored risk result with ID: %s", req.TransactionData.TrxKey)
 	return nil
 }

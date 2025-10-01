@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/segmentio/ksuid"
 	pb "github.com/wirsal/project-aegis/api/protos"
 	"github.com/wirsal/project-aegis/pkg/codec"
 )
@@ -24,7 +23,7 @@ func ParseAndMapTransaction(data string) (*pb.Transaction, error) {
 	}
 
 	trx := &pb.Transaction{
-		TrxId:            generateTrxId(),
+
 		TrxDate:          julianToDate(codec.Hex2string_comp3(data[0:4])[0:7]),
 		TrxTime:          strToTime(codec.Hex2string_comp3(data[4:8])[:7]),
 		CardOrg:          codec.Hex2string_comp3(data[8:10])[:3],
@@ -55,14 +54,34 @@ func ParseAndMapTransaction(data string) (*pb.Transaction, error) {
 
 	switch trx.TrxCardType {
 	case "1", "3": //VISA
+		//VISA
 		trx.TrxPosMode = codec.Hex2string(data[101:103])
-		// ... tambahkan sisa field VISA di sini
+		trx.TrxPinCap = codec.Hex2string(data[103:104])
+		trx.TrxRespCode = codec.Hex2string(data[619:621])
+		trx.TrxMerchantName = codec.Hex2string(data[621:661])
+		trx.TrxStip = codec.Hex2string(data[661:662])
+		trx.TrxPosData = codec.Hex2string_comp3(data[677:682])
+		trx.TrxCvvResult = codec.Hex2string(data[690:691])
+		trx.TrxCvv2Result = codec.Hex2string(data[692:693])
+		trx.TrxArqcResult = codec.Hex2string(data[693:694])
+		trx.TrxCavResult = codec.Hex2string(data[694:695])
 	case "2", "4": //Mastercard
+		//Mastercard
 		trx.TrxPosMode = codec.Hex2string(data[102:104])
-		// ... tambahkan sisa field Mastercard di sini
+		trx.TrxPinCap = codec.Hex2string(data[104:105])
+		trx.TrxRespCode = codec.Hex2string(data[657:659])
+		trx.TrxMerchantName = codec.Hex2string(data[766:806])
+		trx.TrxStip = codec.Hex2string(data[615:616])
+		trx.TrxPosData = codec.Hex2string_comp3(data[631:657])
+		trx.TrxCvvResult = codec.Hex2string(data[659:660])
+		trx.TrxCvv2Result = codec.Hex2string(data[661:662])
+		trx.TrxArqcResult = codec.Hex2string(data[664:665])
+		trx.TrxCavResult = codec.Hex2string(data[665:666])
+	case "6", "7":
+
 	}
 
-	trx.TrxId = generateDeterministicTrxId(trx.CardNumber, trx.TrxDate, trx.TrxTime, trx.TrxAuthCode, trx.TrxAmount)
+	trx.TrxKey = generateDeterministicTrxKey(trx.CardNumber, trx.TrxDate, trx.TrxTime, trx.TrxAuthCode, trx.TrxAmount)
 	log.Printf("Parsed Transaction Data: %+v", trx)
 	return trx, nil
 }
@@ -128,15 +147,10 @@ func trxOrgAmountSimple(amountStr, trxCardType, merchOrg, tempConvRate string, d
 	return float32(result)
 }
 
-func generateTrxId() string {
-	id := ksuid.New()
-	return id.String()
-}
-
-func generateDeterministicTrxId(cardNumber, trxDate, trxTime, trxAuth string, amount float32) string {
+func generateDeterministicTrxKey(cardNumber, trxDate, trxTime, trxAuth string, amount float32) string {
 	// 1. Gabungkan semua field penting menjadi satu string yang stabil dan unik.
 	//    Gunakan pemisah agar tidak ambigu (misal, "123"+"45" vs "12"+"345").
-	inputString := fmt.Sprintf("%s-%s-%s-%.2f", cardNumber, trxDate, trxTime, trxAuth, amount)
+	inputString := fmt.Sprintf("%s-%s-%s-%s-%.2f", cardNumber, trxDate, trxTime, trxAuth, amount)
 
 	// 2. Buat hash dari string tersebut menggunakan SHA-256
 	hasher := sha256.New()

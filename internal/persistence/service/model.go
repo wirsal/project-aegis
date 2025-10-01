@@ -3,7 +3,7 @@ package service
 import "time"
 
 type TransactionLogModel struct {
-	TrxID            string    `db:"trx_id"`
+	TrxKey           string    `db:"trx_key"`
 	CardOrg          string    `db:"card_org"`
 	CardType         string    `db:"card_type"`
 	CardNumber       string    `db:"card_number"`
@@ -43,4 +43,26 @@ type TransactionLogModel struct {
 	TrxArqcResult    string    `db:"trx_arqc_result"`
 	TrxChipLength    int       `db:"trx_chip_length"`
 	TrxChipData      string    `db:"trx_chip_data"`
+}
+
+type RiskResultModel struct {
+	ID         int64     `db:"rr_id"`
+	Key        string    `db:"rr_key"`
+	Card       string    `db:"rr_card"`
+	Desc       string    `db:"rr_desc"`
+	DescAdd1   string    `db:"rr_desc_add1"`
+	DescAdd2   string    `db:"rr_desc_add2"`
+	DescAdd3   string    `db:"rr_desc_add3"`
+	CurrCode   string    `db:"rr_curr_code"`
+	Amount     string    `db:"rr_amount"`
+	AmountAdd1 string    `db:"rr_amount_add1"`
+	AmountAdd2 string    `db:"rr_amount_add2"`
+	DateTime   time.Time `db:"rr_datetime"`
+	DateAdd1   time.Time `db:"rr_date_add1"`
+	DateAdd2   time.Time `db:"rr_date_add2"`
+	RuleCode   string    `db:"rr_rule_code"`
+	RuleType   string    `db:"rr_rule_type"`
+	DateProc   time.Time `db:"rr_date_proc"`
+	DateVald   time.Time `db:"rr_date_vald"`
+	DateWrite  time.Time `db:"rr_date_write"`
 }
