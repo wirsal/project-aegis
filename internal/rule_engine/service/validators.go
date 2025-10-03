@@ -3,11 +3,28 @@ package service
 import (
 	"strconv"
 	"strings"
+
+	pb "github.com/wirsal/project-aegis/api/protos"
 )
+
+// validateRule tetap sama
+func (s *Service) validateRule(rule Rule, trx *pb.Transaction) bool {
+	trxTime, _ := strconv.Atoi(trx.TrxTime)
+	return vInList(rule.Org, trx.CardOrg, "000") &&
+		vInList(rule.Type, trx.CardType, "000") &&
+		vInList(rule.MerchCategory, trx.MerchCategory, "0000") &&
+		// vInList(rule.TransCode, trx.tra)
+		vInclusionExclusion(rule.CountryCode, trx.TrxCountry, "A000") &&
+		vInclusionExclusion(rule.CurrencyCode, trx.TrxCurrency, "A000") &&
+		vInRange(rule.Amount, int64(trx.TrxAmount)) &&
+		vInList(rule.PosCondCode, trx.TrxPosMode, "AA") &&
+		vInList(rule.RespCode, trx.TrxRespCode, "AA") &&
+		vInRange(rule.TimeStamp, int64(trxTime)) &&
+		vInList(rule.InstallmentInd, trx.TrxInstallment, "-")
+}
 
 // vInList checks if an input exists in a semicolon-separated list.
 func vInList(ruleValue, inputValue, wildcard string) bool {
-	// 1. Trim excess spaces and semicolons from the start/end
 	cleanRule := strings.Trim(ruleValue, " ;")
 
 	if cleanRule == wildcard {
@@ -15,13 +32,12 @@ func vInList(ruleValue, inputValue, wildcard string) bool {
 	}
 
 	// 2. If the rule becomes empty after cleaning, consider it a match (no rule)
-	// This handles cases like ruleValue = ";" or ruleValue = ""
 	if cleanRule == "" {
 		return true
 	}
 
-	list := strings.Split(cleanRule, ";")
-	for _, item := range list {
+	list := strings.SplitSeq(cleanRule, ";")
+	for item := range list {
 		// Trim spaces per item to handle cases like "001; 002"
 		if strings.TrimSpace(item) == inputValue {
 			return true

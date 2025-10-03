@@ -95,9 +95,7 @@ func mapToTransactionLogModel(trx *pb.Transaction) (*TransactionLogModel, error)
 func mapToRiskResultModel(req *pb.StoreTransactionRequest) (*RiskResultModel, error) {
 	trxData := req.GetTransactionData()
 	riskData := req.GetRiskData()
-	log.Printf("Risk Data: %+v", riskData)
 
-	// Handle parsing tanggal dan waktu transaksi
 	trxDateTime, err := time.Parse("2006-01-02 15:04:05", trxData.TrxDate+" "+trxData.TrxTime)
 	if err != nil {
 		log.Printf("Warning: could not parse rr_datetime for TrxID %s, using current time. Error: %v", trxData.TrxKey, err)
@@ -105,18 +103,17 @@ func mapToRiskResultModel(req *pb.StoreTransactionRequest) (*RiskResultModel, er
 	}
 
 	model := &RiskResultModel{
-		Key:       trxData.TrxKey,          // rr_key diisi dari trx_id
-		Card:      trxData.CardNumber,      // rr_card diisi dari card_number
-		Desc:      trxData.TrxMerchantName, // rr_desc diisi dari nama merchant
+		Key:       trxData.TrxKey,
+		Card:      trxData.CardNumber,
+		Desc:      trxData.TrxMerchantName,
 		CurrCode:  trxData.TrxCurrency,
-		Amount:    fmt.Sprintf("%.2f", trxData.TrxAmount), // rr_amount diisi dari trx_amount
+		Amount:    fmt.Sprintf("%.2f", trxData.TrxAmount),
 		DateTime:  trxDateTime,
-		RuleCode:  riskData.RuleCode, // rr_rule_code diisi dari aturan pertama yang terpicu
-		RuleType:  riskData.RuleType, // TODO: Isi dengan kode notifikasi jika ada
-		DateProc:  time.Now(),        // Waktu saat record ini diproses
-		DateVald:  time.Now(),        // TODO: Sesuaikan dengan logika tanggal validasi jika ada
-		DateWrite: time.Now(),        // Waktu saat record ini ditulis ke DB
-		// Field-field lain yang tidak ada sumbernya akan diisi nilai default (kosong atau nol)
+		RuleCode:  riskData.RuleCode,
+		RuleType:  riskData.RuleType,
+		DateProc:  time.Now(),
+		DateVald:  time.Now(),
+		DateWrite: time.Now(),
 	}
 	return model, nil
 }

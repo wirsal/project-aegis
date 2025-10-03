@@ -81,20 +81,6 @@ func (s *Service) AnalyzeTransaction(in *pb.Transaction) *pb.RiskResult {
 	}
 }
 
-// validateRule tetap sama
-func (s *Service) validateRule(rule Rule, trx *pb.Transaction) bool {
-	amountInt := int64(trx.TrxAmount)
-
-	println("Ruleeee", rule.RuleCode)
-	return vInList(rule.Org, trx.CardOrg, "000") &&
-		vInclusionExclusion(rule.CountryCode, trx.TrxCountry, "A000") &&
-		vInList(rule.Type, trx.CardType, "000") &&
-		vInList(rule.MerchCategory, trx.MerchCategory, "0000") &&
-		vInList(rule.PosCondCode, trx.TrxPosMode, "AA") &&
-		vInList(rule.RespCode, trx.TrxRespCode, "AA") &&
-		vInRange(rule.Amount, amountInt)
-}
-
 func (s *Service) callPersistence(trxData *pb.Transaction, riskData *pb.RiskResult) {
 	log.Printf("Calling Persistence Service for TrxKey: %s", trxData.TrxKey)
 
