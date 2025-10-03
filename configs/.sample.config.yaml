@@ -1,0 +1,21 @@
+gateway:
+  tcp_port: ":3333"
+  rule_engine_address: "localhost:50051"
+
+rule_engine:
+  grpc_port: ":50051"
+
+persistence:
+  grpc_port: ":50052"
+  grpc_address: "localhost:50052"
+notification:
+  grpc_port: ":50053"
+  grpc_address: "localhost:50053"
+  external_api_url: "http://localhost:8080/api/v1/notifications"
+
+database:
+  host: "localhost"
+  port: "5432"
+  user: "user1"
+  password: "password1"
+  dbname: "aegis"

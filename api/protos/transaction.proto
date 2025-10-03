@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package risk;
+
+option go_package = "api/protos";
+
+message Transaction{
+  string trxKey= 1;
+  string trxDate = 2;
+  string trxTime = 3;
+  string cardOrg = 4;
+  string cardType = 5;
+  string cardNumber = 6;
+  string merchOrg = 7;
+  string merchNumber = 8;
+  string trxCode = 9;
+  string trxReffNumber = 10;
+  float  trxAmount = 11;
+  string trxBillAmount = 12;
+  string cardExpired = 13;
+  string merchCategory = 14;
+  string trxCountry = 15;
+  string trxAuthCode = 16;
+  string trxCardType = 17;
+  string trxRespCode = 18;
+  string trxMerchantName = 19;
+  string trxPinCap = 20;
+  string trxPosMode = 21;
+  string trxPosData = 22;
+  string trxStip = 23;
+  string trxCvvResult = 24;
+  string trxCvv2Result = 25;
+  string trxCavResult = 26;
+  string trxArqcResult = 27;
+  string trxChipData = 28;
+  string trxCurrency = 29;
+  string trxInstallment = 30;
+  string trxDeclineReason = 31;
+  string trxTerminalId = 32;
+  string trxMerchantId = 33;
+  string trxAcqId = 34;
+  string trxFwdId = 35;
+  string trxChbCurr = 36;
+  float trxOrgAmount = 37;
+}
+
+// Struktur untuk hasil evaluasi risiko
+message RiskResult {
+  enum RiskLevel {
+    LOW = 0;
+    MEDIUM = 1;
+    HIGH = 2;
+  }
+  string trxKey = 1;
+  RiskLevel risk_level = 2;
+  repeated string triggered_rules = 3;
+  int32 risk_score = 4;
+  string rule_code = 5;
+  string rule_type = 6;
+  string rule_desc = 7;
+}
+
+// Service untuk Rule Engine
+service RuleEngine {
+  rpc AnalyzeTransaction(Transaction) returns (RiskResult);
+}
+
+// Service untuk Persistence
+service Persistence {
+  // Tugas 1: Menyimpan semua transaksi mentah
+  rpc StoreRawTransaction(Transaction) returns (StoreAck);
+
+  // Tugas 2: Menyimpan hasil dari Rule Engine
+   rpc StoreTransaction(StoreTransactionRequest) returns (StoreAck);
+
+}
+
+message StoreTransactionRequest {
+  Transaction transaction_data = 1;
+  RiskResult risk_data = 2;
+}
+
+message StoreAck {
+  bool success = 1;
+  string message = 2;
+}
+// Service untuk Notifikasi
+service Notification {
+  // Mengirim hasil risiko sebagai notifikasi
+  rpc SendRiskNotification(RiskResult) returns (NotificationAck);
+}
+
+message NotificationAck {
+  bool success = 1;
+  string delivery_status = 2; 
+}
+
