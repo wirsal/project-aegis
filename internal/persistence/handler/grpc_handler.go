@@ -5,17 +5,20 @@ import (
 	"log"
 
 	pb "github.com/wirsal/project-aegis/api/protos"
-	"github.com/wirsal/project-aegis/internal/persistence/service"
 )
+
+type PersistenceService interface {
+	StoreRawTransaction(ctx context.Context, trx *pb.Transaction) error
+	StoreRiskResult(ctx context.Context, req *pb.StoreTransactionRequest) error
+}
 
 // GRPCHandler mengimplementasikan interface gRPC Server.
 type GRPCHandler struct {
 	pb.UnimplementedPersistenceServer
-	service *service.Service
+	service PersistenceService
 }
 
-// NewGRPCHandler membuat instance handler baru.
-func NewGRPCHandler(svc *service.Service) *GRPCHandler {
+func NewGRPCHandler(svc PersistenceService) *GRPCHandler {
 	return &GRPCHandler{
 		service: svc,
 	}

@@ -98,7 +98,7 @@ func mapToRiskResultModel(req *pb.StoreTransactionRequest) (*RiskResultModel, er
 
 	trxDateTime, err := time.Parse("2006-01-02 15:04:05", trxData.TrxDate+" "+trxData.TrxTime)
 	if err != nil {
-		log.Printf("Warning: could not parse rr_datetime for TrxID %s, using current time. Error: %v", trxData.TrxKey, err)
+		log.Printf("Warning: could not parse rr_datetime for TrxKey %s, using current time. Error: %v", trxData.TrxKey, err)
 		trxDateTime = time.Now()
 	}
 

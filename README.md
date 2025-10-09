@@ -230,7 +230,7 @@ The communication contracts between all services are defined in `api/protos/tran
   // --- Messages ---
 
   message Transaction {
-    string trxId = 1;
+    string trxKey = 1;
     string trxDate = 2;
     // ... many other fields
   }

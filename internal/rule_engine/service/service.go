@@ -36,7 +36,6 @@ func NewService(rulesPath string, psc pb.PersistenceClient, nsc pb.NotificationC
 	}, nil
 }
 
-// fungsi loadRules tetap sama
 func loadRules(path string) ([]Rule, error) {
 	file, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -48,8 +47,6 @@ func loadRules(path string) ([]Rule, error) {
 	return rules, err
 }
 
-// AnalyzeTransaction sekarang menjadi fungsi bisnis murni.
-// Perhatikan bahwa 'context' sudah tidak ada, karena itu urusan handler.
 func (s *Service) AnalyzeTransaction(in *pb.Transaction) *pb.RiskResult {
 	log.Printf("🔎 Analyzing transaction (Reff=%s) against %d rules...", in.TrxKey, len(s.rules))
 

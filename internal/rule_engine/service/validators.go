@@ -7,7 +7,6 @@ import (
 	pb "github.com/wirsal/project-aegis/api/protos"
 )
 
-// validateRule tetap sama
 func (s *Service) validateRule(rule Rule, trx *pb.Transaction) bool {
 	trxTime, _ := strconv.Atoi(trx.TrxTime)
 	return vInList(rule.Org, trx.CardOrg, "000") &&
@@ -49,18 +48,32 @@ func vInList(ruleValue, inputValue, wildcard string) bool {
 // vInRange checks if an input is within a min-max range.
 // Used for vCrLimit, vTrxAmt, vTimeStamp.
 func vInRange(ruleValue string, inputValue int64) bool {
-	parts := strings.Split(ruleValue, "-")
-	if len(parts) != 2 {
-		return false // Incorrect rule format
+	separatorIndex := strings.LastIndex(ruleValue, "-")
+
+	if separatorIndex == -1 || separatorIndex == 0 {
+		return false
 	}
-	min, _ := strconv.ParseInt(parts[0], 10, 64)
-	max, _ := strconv.ParseInt(parts[1], 10, 64)
+
+	minStr := ruleValue[:separatorIndex]
+	maxStr := ruleValue[separatorIndex+1:]
+
+	min, errMin := strconv.ParseInt(minStr, 10, 64)
+	max, errMax := strconv.ParseInt(maxStr, 10, 64)
+
+	if errMin != nil || errMax != nil {
+		return false
+	}
+
 	return inputValue >= min && inputValue <= max
 }
 
 // vInclusionExclusion implements include/exclude logic.
 // It checks a rule value like "I360;840" or "E360".
 func vInclusionExclusion(ruleValue, inputValue, wildcard string) bool {
+	if ruleValue == "" {
+		return true
+	}
+
 	// 1. Handle wildcard case first
 	if ruleValue == wildcard {
 		return true
