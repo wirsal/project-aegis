@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	pb "github.com/wirsal/project-aegis/api/protos"
 	"github.com/wirsal/project-aegis/pkg/config"
@@ -18,14 +19,19 @@ type Service struct {
 	senders map[string]Sender
 }
 
-func NewService(cfg config.NotificationConfig) *Service {
-	firebaseSender := NewFirebaseSender(cfg.FCMgatewayURL)
-	// smsSender := NewSMSSender(cfg.SMSGatewayURL)
+type Recipient struct {
+	fcm_token    string
+	email        string
+	phone_number string
+}
 
+func NewService(cfg config.NotificationConfig) *Service {
 	return &Service{
 		senders: map[string]Sender{
-			"FIREBASE": firebaseSender,
-			// "SMS":      smsSender,
+			"firebase": NewFirebaseSender(cfg.FCMgatewayURL),
+			"email":    NewEmailSender(cfg.EmailGatewayURL),
+			"sms":      NewWASender(cfg.WAGatewayURL),
+			"wa":       NewWASender(cfg.WAGatewayURL),
 		},
 	}
 }
@@ -34,42 +40,57 @@ func (s *Service) TriggerRiskAlert(ctx context.Context, req *pb.RiskAlertRequest
 	trxData := req.GetTransactionData()
 	riskData := req.GetRiskData()
 
-	// 1. Tentukan Channel (contoh logika sederhana)
-	//    Logika ini bisa lebih kompleks, misal membaca dari config atau database.
-	var channel string
-	if riskData.GetRiskScore() > 90 {
-		channel = "FIREBASE" // atau "SMS"
-	} else {
-		channel = "FIREBASE"
+	recipientInfo := getRecipient(trxData.CardNumber)
+
+	channels := strings.Split(riskData.RuleChannel, ",")
+	var processingErrors []string // Slice untuk mengumpulkan pesan error
+
+	for _, channel := range channels {
+		cleanedChannel := strings.TrimSpace(strings.ToLower(channel))
+		if cleanedChannel == "" {
+			continue
+		}
+
+		var recipientAddress string
+		var payloadStruct *structpb.Struct
+		switch cleanedChannel {
+		case "firebase":
+			recipientAddress = recipientInfo.fcm_token
+			payloadStruct, _ = getPayloadFCM(trxData)
+		case "email":
+			recipientAddress = recipientInfo.email
+			payloadStruct, _ = getPayloadEmail(trxData, riskData.RuleTemplatesId)
+		case "wa", "sms":
+			recipientAddress = recipientInfo.phone_number
+			payloadStruct, _ = getPayloadWa(trxData, riskData.RuleTemplatesId)
+		default:
+			log.Printf("Warning: channel '%s' is not supported, skipping.", cleanedChannel)
+			continue
+		}
+
+		if recipientAddress == "" {
+			log.Printf("Warning: recipient address for channel '%s' is empty, skipping.", cleanedChannel)
+			continue
+		}
+
+		internalReq := &pb.NotificationRequest{
+			Channel:   cleanedChannel,
+			Recipient: recipientAddress,
+			Payload:   payloadStruct,
+		}
+
+		log.Printf("Attempting to send notification via channel: %s", cleanedChannel)
+		if err := s.SendNotification(ctx, internalReq); err != nil {
+			processingErrors = append(processingErrors, fmt.Sprintf("channel %s: %v", cleanedChannel, err))
+		}
 	}
 
-	// 2. Cari Penerima (ini bagian penting yang perlu Anda kembangkan)
-	//    TODO: Implementasikan logic untuk mencari device token dari database pelanggan
-	//          berdasarkan trxData.GetCardNumber() atau ID pelanggan.
-	recipient := "ch30ZNhq7kDgnPqChvHg6W:APA91bGn9oH5JuUh4BBV2gF_0B4dZXLfF2Yo94xFX7dr_w5awHjEZBfTpOjg1IwI1F-C6Ap9KB6lZGb2tFet4W3jEvviJ6q1aMzI9pNu_4iaqbpj12-FNfw" // Placeholder
-	if recipient == "" {
-		return fmt.Errorf("recipient not found for card number %s", trxData.GetCardNumber())
+	if len(processingErrors) > 0 {
+		return fmt.Errorf("encountered errors during notification processing: %s", strings.Join(processingErrors, "; "))
 	}
 
-	// 3. Susun Payload Pesan
-	payloadData := map[string]interface{}{
-		"title": "Peringatan Keamanan Kartu Anda",
-		"body":  fmt.Sprintf("Terdeteksi transaksi mencurigakan sebesar %.2f di %s.", trxData.GetTrxAmount(), trxData.GetTrxMerchantName()),
-	}
-	payloadStruct, err := structpb.NewStruct(payloadData)
-	if err != nil {
-		return fmt.Errorf("failed to create payload struct: %w", err)
-	}
-
-	// 4. Buat Request Internal untuk didistribusikan ke Sender
-	internalReq := &pb.NotificationRequest{
-		Channel:   channel,
-		Recipient: recipient,
-		Payload:   payloadStruct,
-	}
-
-	// 5. Panggil distributor internal (yang sudah ada sebelumnya)
-	return s.SendNotification(ctx, internalReq)
+	log.Printf("Successfully processed all notification channels for TrxKey: %s", trxData.GetTrxKey())
+	return nil
 }
 
 func (s *Service) SendNotification(ctx context.Context, req *pb.NotificationRequest) error {

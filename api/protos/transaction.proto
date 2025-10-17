@@ -60,6 +60,8 @@ message RiskResult {
   string rule_code = 5;
   string rule_type = 6;
   string rule_desc = 7;
+  string rule_channel = 8;
+  string rule_templates_id = 9;
 }
 
 message RiskAlertRequest {

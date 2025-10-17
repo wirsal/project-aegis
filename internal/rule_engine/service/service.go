@@ -56,12 +56,14 @@ func (s *Service) AnalyzeTransaction(in *pb.Transaction) *pb.RiskResult {
 
 			// Buat RiskResult yang akan dikirim
 			riskResult := &pb.RiskResult{
-				TrxKey:         in.TrxKey,
-				RiskLevel:      pb.RiskResult_HIGH,
-				TriggeredRules: []string{rule.RuleCode},
-				RiskScore:      100,
-				RuleCode:       rule.RuleCode,
-				RuleType:       rule.RuleType,
+				TrxKey:          in.TrxKey,
+				RiskLevel:       pb.RiskResult_HIGH,
+				TriggeredRules:  []string{rule.RuleCode},
+				RiskScore:       100,
+				RuleCode:        rule.RuleCode,
+				RuleType:        rule.RuleType,
+				RuleChannel:     rule.Channel,
+				RuleTemplatesId: rule.Templates_id,
 			}
 
 			go s.callPersistence(in, riskResult)

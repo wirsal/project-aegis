@@ -21,4 +21,6 @@ type Rule struct {
 	InstallmentInd string `json:"installment_ind"`
 	FirstUsageFlag string `json:"first_usage_flag"`
 	CardList       string `json:"card_list"`
+	Channel        string `json:"channel"`
+	Templates_id   string `json:"templates_id"`
 }

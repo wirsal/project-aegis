@@ -22,7 +22,7 @@
     "card_list": "",
     "desc": "-",
     "channel": "EMAIL,WA,SMS",
-    "redaksional": "EM2,WA1,SM2687"
+    "templates_id": "EM2,WA1,SM2687"
   },
   {
     "rule_code": "DCLND",
@@ -47,7 +47,7 @@
     "card_list": "",
     "desc": "-",
     "channel": "Email,SMS",
-    "redaksional": "EM2,SM11"
+    "templates_id": "EM2,SM11"
   },
   {
     "rule_code": "INVCVV",
@@ -72,7 +72,7 @@
     "card_list": "",
     "desc": "-",
     "channel": "Email,SMS",
-    "redaksional": "EM2688,SM11"
+    "templates_id": "EM2688,SM11"
   },
   {
     "rule_code": "CBRD",
@@ -97,7 +97,7 @@
     "card_list": "",
     "desc": "-",
     "channel": "EMAIL,WA,Cobrand,SMS",
-    "redaksional": "EM2,WA1,SM2687"
+    "templates_id": "EM2,WA1,SM2687"
   },
   {
     "rule_code": "TRXNF27",
@@ -122,7 +122,7 @@
     "card_list": "",
     "desc": "",
     "channel": "Wa,Email",
-    "redaksional": "WA1,EM2"
+    "templates_id": "WA1,EM2"
   },
   {
     "rule_code": "TESTING",
@@ -147,6 +147,6 @@
     "card_list": "",
     "desc": "",
     "channel": "Wa, Email",
-    "redaksional": "WA1, EM2"
+    "templates_id": "WA1, EM2"
   }
 ]
