@@ -1,68 +1,85 @@
 package service
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 
 	pb "github.com/wirsal/project-aegis/api/protos"
+	"github.com/wirsal/project-aegis/pkg/config"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// Service handles the business logic for sending notifications.
+type Sender interface {
+	Send(ctx context.Context, req *pb.NotificationRequest) error
+}
+
 type Service struct {
-	httpClient  *http.Client
-	externalURL string // URL of the external RESTful API
+	senders map[string]Sender
 }
 
-// NewService creates a new notification service instance.
-func NewService(externalAPIURL string) *Service {
+func NewService(cfg config.NotificationConfig) *Service {
+	firebaseSender := NewFirebaseSender(cfg.FCMgatewayURL)
+	// smsSender := NewSMSSender(cfg.SMSGatewayURL)
+
 	return &Service{
-		httpClient:  &http.Client{},
-		externalURL: externalAPIURL,
+		senders: map[string]Sender{
+			"FIREBASE": firebaseSender,
+			// "SMS":      smsSender,
+		},
 	}
 }
 
-// SendRiskNotification converts the RiskResult to JSON and sends it via HTTP POST.
-func (s *Service) SendRiskNotification(ctx context.Context, riskData *pb.RiskResult) error {
-	// 1. Convert the protobuf message to a map for easy JSON marshaling
-	payload := map[string]interface{}{
-		"trx_key":           riskData.GetTrxKey(),
-		"risk_level":        riskData.GetRiskLevel().String(),
-		"risk_score":        riskData.GetRiskScore(),
-		"triggered_rules":   riskData.GetTriggeredRules(),
-		"notification_type": "RISK_ALERT",
-	}
+func (s *Service) TriggerRiskAlert(ctx context.Context, req *pb.RiskAlertRequest) error {
+	trxData := req.GetTransactionData()
+	riskData := req.GetRiskData()
 
-	// 2. Marshal the map into a JSON byte slice
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("failed to marshal json: %w", err)
-	}
-
-	// 3. Create a new HTTP POST request
-	req, err := http.NewRequestWithContext(ctx, "POST", s.externalURL, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return fmt.Errorf("failed to create http request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	// 4. Send the request
-	log.Printf("Sending notification to %s...", s.externalURL)
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send http request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// 5. Check the response
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		log.Printf("Successfully sent notification for TrxKey: %s, Status: %s", riskData.GetTrxKey(), resp.Status)
+	// 1. Tentukan Channel (contoh logika sederhana)
+	//    Logika ini bisa lebih kompleks, misal membaca dari config atau database.
+	var channel string
+	if riskData.GetRiskScore() > 90 {
+		channel = "FIREBASE" // atau "SMS"
 	} else {
-		log.Printf("ERROR: Notification sent for TrxKey %s failed with status: %s", riskData.GetTrxKey(), resp.Status)
+		channel = "FIREBASE"
 	}
 
-	return nil
+	// 2. Cari Penerima (ini bagian penting yang perlu Anda kembangkan)
+	//    TODO: Implementasikan logic untuk mencari device token dari database pelanggan
+	//          berdasarkan trxData.GetCardNumber() atau ID pelanggan.
+	recipient := "ch30ZNhq7kDgnPqChvHg6W:APA91bGn9oH5JuUh4BBV2gF_0B4dZXLfF2Yo94xFX7dr_w5awHjEZBfTpOjg1IwI1F-C6Ap9KB6lZGb2tFet4W3jEvviJ6q1aMzI9pNu_4iaqbpj12-FNfw" // Placeholder
+	if recipient == "" {
+		return fmt.Errorf("recipient not found for card number %s", trxData.GetCardNumber())
+	}
+
+	// 3. Susun Payload Pesan
+	payloadData := map[string]interface{}{
+		"title": "Peringatan Keamanan Kartu Anda",
+		"body":  fmt.Sprintf("Terdeteksi transaksi mencurigakan sebesar %.2f di %s.", trxData.GetTrxAmount(), trxData.GetTrxMerchantName()),
+	}
+	payloadStruct, err := structpb.NewStruct(payloadData)
+	if err != nil {
+		return fmt.Errorf("failed to create payload struct: %w", err)
+	}
+
+	// 4. Buat Request Internal untuk didistribusikan ke Sender
+	internalReq := &pb.NotificationRequest{
+		Channel:   channel,
+		Recipient: recipient,
+		Payload:   payloadStruct,
+	}
+
+	// 5. Panggil distributor internal (yang sudah ada sebelumnya)
+	return s.SendNotification(ctx, internalReq)
+}
+
+func (s *Service) SendNotification(ctx context.Context, req *pb.NotificationRequest) error {
+	channel := req.GetChannel()
+	log.Printf("Distributing notification for channel: %s", channel)
+
+	sender, ok := s.senders[channel]
+	if !ok {
+		return fmt.Errorf("unsupported notification channel: %s", channel)
+	}
+
+	return sender.Send(ctx, req)
 }

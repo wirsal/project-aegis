@@ -4,7 +4,9 @@ package risk;
 
 option go_package = "api/protos";
 
-message Transaction{
+import "google/protobuf/struct.proto";
+
+message Transaction {
   string trxKey= 1;
   string trxDate = 2;
   string trxTime = 3;
@@ -44,8 +46,8 @@ message Transaction{
   float trxOrgAmount = 37;
 }
 
-// Struktur untuk hasil evaluasi risiko
 message RiskResult {
+  
   enum RiskLevel {
     LOW = 0;
     MEDIUM = 1;
@@ -60,19 +62,18 @@ message RiskResult {
   string rule_desc = 7;
 }
 
-// Service untuk Rule Engine
+message RiskAlertRequest {
+    Transaction transaction_data = 1;
+    RiskResult risk_data = 2;
+}
+
 service RuleEngine {
   rpc AnalyzeTransaction(Transaction) returns (RiskResult);
 }
 
-// Service untuk Persistence
 service Persistence {
-  // Tugas 1: Menyimpan semua transaksi mentah
   rpc StoreRawTransaction(Transaction) returns (StoreAck);
-
-  // Tugas 2: Menyimpan hasil dari Rule Engine
-   rpc StoreTransaction(StoreTransactionRequest) returns (StoreAck);
-
+  rpc StoreTransaction(StoreTransactionRequest) returns (StoreAck);
 }
 
 message StoreTransactionRequest {
@@ -84,14 +85,19 @@ message StoreAck {
   bool success = 1;
   string message = 2;
 }
-// Service untuk Notifikasi
+
+message NotificationRequest {
+    string notification_id = 1; // ID unik untuk notifikasi ini
+    string channel = 2;         // Target: "FIREBASE", "SMS", "EMAIL", "WA"
+    string recipient = 3;       // Penerima: (token device, nomor HP, alamat email)
+    google.protobuf.Struct payload = 4; // Data notifikasi dalam format JSON fleksibel
+}
+
 service Notification {
-  // Mengirim hasil risiko sebagai notifikasi
-  rpc SendRiskNotification(RiskResult) returns (NotificationAck);
+  rpc TriggerRiskAlert(RiskAlertRequest) returns (NotificationAck);
 }
 
 message NotificationAck {
   bool success = 1;
-  string delivery_status = 2; 
+  string delivery_status = 2;
 }
-

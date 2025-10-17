@@ -108,9 +108,7 @@ var RuleEngine_ServiceDesc = grpc.ServiceDesc{
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PersistenceClient interface {
-	// Tugas 1: Menyimpan semua transaksi mentah
 	StoreRawTransaction(ctx context.Context, in *Transaction, opts ...grpc.CallOption) (*StoreAck, error)
-	// Tugas 2: Menyimpan hasil dari Rule Engine
 	StoreTransaction(ctx context.Context, in *StoreTransactionRequest, opts ...grpc.CallOption) (*StoreAck, error)
 }
 
@@ -144,9 +142,7 @@ func (c *persistenceClient) StoreTransaction(ctx context.Context, in *StoreTrans
 // All implementations must embed UnimplementedPersistenceServer
 // for forward compatibility
 type PersistenceServer interface {
-	// Tugas 1: Menyimpan semua transaksi mentah
 	StoreRawTransaction(context.Context, *Transaction) (*StoreAck, error)
-	// Tugas 2: Menyimpan hasil dari Rule Engine
 	StoreTransaction(context.Context, *StoreTransactionRequest) (*StoreAck, error)
 	mustEmbedUnimplementedPersistenceServer()
 }
@@ -234,8 +230,7 @@ var Persistence_ServiceDesc = grpc.ServiceDesc{
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NotificationClient interface {
-	// Mengirim hasil risiko sebagai notifikasi
-	SendRiskNotification(ctx context.Context, in *RiskResult, opts ...grpc.CallOption) (*NotificationAck, error)
+	TriggerRiskAlert(ctx context.Context, in *RiskAlertRequest, opts ...grpc.CallOption) (*NotificationAck, error)
 }
 
 type notificationClient struct {
@@ -246,9 +241,9 @@ func NewNotificationClient(cc grpc.ClientConnInterface) NotificationClient {
 	return &notificationClient{cc}
 }
 
-func (c *notificationClient) SendRiskNotification(ctx context.Context, in *RiskResult, opts ...grpc.CallOption) (*NotificationAck, error) {
+func (c *notificationClient) TriggerRiskAlert(ctx context.Context, in *RiskAlertRequest, opts ...grpc.CallOption) (*NotificationAck, error) {
 	out := new(NotificationAck)
-	err := c.cc.Invoke(ctx, "/risk.Notification/SendRiskNotification", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/risk.Notification/TriggerRiskAlert", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -259,8 +254,7 @@ func (c *notificationClient) SendRiskNotification(ctx context.Context, in *RiskR
 // All implementations must embed UnimplementedNotificationServer
 // for forward compatibility
 type NotificationServer interface {
-	// Mengirim hasil risiko sebagai notifikasi
-	SendRiskNotification(context.Context, *RiskResult) (*NotificationAck, error)
+	TriggerRiskAlert(context.Context, *RiskAlertRequest) (*NotificationAck, error)
 	mustEmbedUnimplementedNotificationServer()
 }
 
@@ -268,8 +262,8 @@ type NotificationServer interface {
 type UnimplementedNotificationServer struct {
 }
 
-func (UnimplementedNotificationServer) SendRiskNotification(context.Context, *RiskResult) (*NotificationAck, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendRiskNotification not implemented")
+func (UnimplementedNotificationServer) TriggerRiskAlert(context.Context, *RiskAlertRequest) (*NotificationAck, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TriggerRiskAlert not implemented")
 }
 func (UnimplementedNotificationServer) mustEmbedUnimplementedNotificationServer() {}
 
@@ -284,20 +278,20 @@ func RegisterNotificationServer(s grpc.ServiceRegistrar, srv NotificationServer)
 	s.RegisterService(&Notification_ServiceDesc, srv)
 }
 
-func _Notification_SendRiskNotification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RiskResult)
+func _Notification_TriggerRiskAlert_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RiskAlertRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NotificationServer).SendRiskNotification(ctx, in)
+		return srv.(NotificationServer).TriggerRiskAlert(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/risk.Notification/SendRiskNotification",
+		FullMethod: "/risk.Notification/TriggerRiskAlert",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NotificationServer).SendRiskNotification(ctx, req.(*RiskResult))
+		return srv.(NotificationServer).TriggerRiskAlert(ctx, req.(*RiskAlertRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -310,8 +304,8 @@ var Notification_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*NotificationServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SendRiskNotification",
-			Handler:    _Notification_SendRiskNotification_Handler,
+			MethodName: "TriggerRiskAlert",
+			Handler:    _Notification_TriggerRiskAlert_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

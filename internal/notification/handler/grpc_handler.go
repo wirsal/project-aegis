@@ -7,33 +7,30 @@ import (
 	pb "github.com/wirsal/project-aegis/api/protos"
 )
 
-// 1. Buat interface yang mendefinisikan apa yang dibutuhkan handler dari service.
 type NotificationService interface {
-	SendRiskNotification(ctx context.Context, riskData *pb.RiskResult) error
+	TriggerRiskAlert(ctx context.Context, req *pb.RiskAlertRequest) error
 }
 
-// GRPCHandler sekarang bergantung pada interface, bukan struct.
 type GRPCHandler struct {
 	pb.UnimplementedNotificationServer
-	service NotificationService // <-- Bergantung pada interface
+	service NotificationService
 }
 
-// NewGRPCHandler menerima interface sebagai argumen.
 func NewGRPCHandler(svc NotificationService) *GRPCHandler {
 	return &GRPCHandler{
 		service: svc,
 	}
 }
 
-func (h *GRPCHandler) SendRiskNotification(ctx context.Context, in *pb.RiskResult) (*pb.NotificationAck, error) {
-	log.Printf("gRPC handler received SendRiskNotification for RRN: %s", in.TrxKey)
+func (h *GRPCHandler) TriggerRiskAlert(ctx context.Context, in *pb.RiskAlertRequest) (*pb.NotificationAck, error) {
+	log.Printf("gRPC handler received TriggerRiskAlert for TrxKey: %s", in.GetTransactionData().GetTrxKey())
 
-	err := h.service.SendRiskNotification(ctx, in)
+	// 3. Panggil metode service yang sudah diperbarui
+	err := h.service.TriggerRiskAlert(ctx, in)
 	if err != nil {
-		// Jika service mengembalikan error, kirim Ack 'false'
+		log.Printf("ERROR from service layer: %v", err)
 		return &pb.NotificationAck{Success: false, DeliveryStatus: "FAILED"}, nil
 	}
 
-	// Jika service berhasil, kirim Ack 'true'
 	return &pb.NotificationAck{Success: true, DeliveryStatus: "SENT"}, nil
 }

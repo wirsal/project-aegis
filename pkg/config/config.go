@@ -29,9 +29,12 @@ type PersistenceConfig struct {
 }
 
 type NotificationConfig struct {
-	GRPCPort       string `mapstructure:"grpc_port"`
-	GRPCPAddress   string `mapstructure:"grpc_address"`
-	ExternalAPIURL string `mapstructure:"external_api_url"`
+	GRPCPort        string `mapstructure:"grpc_port"`
+	GRPCPAddress    string `mapstructure:"grpc_address"`
+	FCMgatewayURL   string `mapstructure:"fcmgateway_url"`
+	SMSGatewayURL   string `mapstructure:"smsgateway_url"`
+	EmailGatewayURL string `mapstructure:"emailgateway_url"`
+	WAGatewayURL    string `mapstructure:"wagateway_url"`
 }
 
 // Struct untuk konfigurasi database

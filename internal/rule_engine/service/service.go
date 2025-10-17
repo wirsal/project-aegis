@@ -65,7 +65,7 @@ func (s *Service) AnalyzeTransaction(in *pb.Transaction) *pb.RiskResult {
 			}
 
 			go s.callPersistence(in, riskResult)
-			go s.callNotification(riskResult)
+			go s.callNotification(in, riskResult)
 
 			return riskResult
 		}
@@ -94,13 +94,18 @@ func (s *Service) callPersistence(trxData *pb.Transaction, riskData *pb.RiskResu
 	}
 }
 
-func (s *Service) callNotification(riskData *pb.RiskResult) {
-	log.Printf("Calling Notification Service for TrxKey: %s", riskData.TrxKey)
+func (s *Service) callNotification(trxData *pb.Transaction, riskData *pb.RiskResult) {
+	log.Printf("Calling Notification Service to trigger alert for TrxKey: %s", riskData.TrxKey)
 
-	_, err := s.notificationClient.SendRiskNotification(context.Background(), riskData)
+	alertReq := &pb.RiskAlertRequest{
+		TransactionData: trxData,
+		RiskData:        riskData,
+	}
+
+	_, err := s.notificationClient.TriggerRiskAlert(context.Background(), alertReq)
 	if err != nil {
 		log.Printf("ERROR: Failed to call Notification Service: %v", err)
 	} else {
-		log.Printf("Successfully called Notification Service for TrxKey: %s", riskData.TrxKey)
+		log.Printf("Successfully triggered notification for TrxKey: %s", riskData.TrxKey)
 	}
 }

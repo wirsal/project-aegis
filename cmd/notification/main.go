@@ -23,8 +23,12 @@ func main() {
 		log.Fatalf("FATAL: Failed to listen on port %s: %v", cfg.Notification.GRPCPort, err)
 	}
 
-	// Buat instance service dan berikan URL API eksternal dari config
-	notificationService := service.NewService(cfg.Notification.ExternalAPIURL)
+	// --- PERUBAHAN DI SINI ---
+	// Buat instance service dan berikan seluruh objek config notifikasi.
+	// Service akan mengurus inisialisasi semua sender yang dibutuhkan.
+	notificationService := service.NewService(cfg.Notification)
+	// -------------------------
+
 	grpcHandler := handler.NewGRPCHandler(notificationService)
 
 	grpcServer := grpc.NewServer()
